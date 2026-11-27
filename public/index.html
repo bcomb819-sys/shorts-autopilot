@@ -54,7 +54,7 @@
         </div>
         <div class="row">
           <select id="runStyle">
-            <option value="">Auto-Rotate (All Enabled Styles)</option>
+            <option value="">Smart Shuffle (Mix All 6 Styles)</option>
           </select>
           <button id="runNowBtn" class="btn btn-accent">Generate &amp; Auto-Post</button>
           <button id="previewBtn" class="btn btn-ghost">Preview Only</button>
@@ -123,8 +123,9 @@
         </div>
 
         <div class="styles-box">
-          <span class="label">Enabled Styles (rotates automatically)</span>
+          <span class="label">Enabled Styles — Smart Shuffle Active (mixes all 6, never repeats back-to-back)</span>
           <div id="styleChecks" class="style-grid"></div>
+          <div class="hint" id="shuffleQueueHint" style="margin-top:6px;"></div>
         </div>
       </div>
 

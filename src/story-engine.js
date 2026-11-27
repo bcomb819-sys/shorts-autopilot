@@ -27,37 +27,75 @@ const STYLE_SCHEMAS = {
     scenes: ['street', 'office', 'gallery', 'meadow', 'sunset'],
     moods: ['smug', 'happy', 'laugh', 'shock', 'worried', 'angry', 'proud', 'sly'],
     props: ['dollarBill', 'stack', 'paper', 'key', 'ticket', 'book', 'cup', 'parcels', 'letters', 'rubberStamp', 'sign'],
-    guidance: 'A funny, clever, real verified true story (loophole, wild con, quirky historical event, surprising business trick). Hook in line 0 under 11 words. 7-9 short flowing lines (~95-115 words). End on a witty punchline.',
+    angles: [
+      'crazy legal or business loophole someone exploited',
+      'audacious real-life heist or clever con artist trick',
+      'funny weird history event that actually happened',
+      'bizarre marketing stunt or billion-dollar accidental fortune',
+      'ordinary person who outsmarted a giant corporation or government',
+    ],
+    guidance: 'Tall Tale 3D (expressive 2D cartoon characters inside a bright 3D miniature world): A funny, clever, verified true story — crazy loopholes, heists, scams, or weird history. Hook in line 0 under 11 words. 7-9 short flowing lines (~95-115 words). End on a witty punchline.',
   },
   'deep-dive': {
     scenes: ['kitchen', 'xray', 'vessel', 'vessel_dark', 'xray_alarm', 'heart', 'blackout', 'kitchen_end'],
     moods: ['neutral'],
     props: [],
-    guidance: 'A fascinating, scientifically accurate "What happens if...?" human body or health explainer (no gore). Hook question in line 0. 7-8 flowing lines (~95-110 words). Include short 2-word uppercase pill labels.',
+    angles: [
+      'what happens inside your body if you get stung by a bullet ant or venomous creature',
+      'what happens if you swallow something strange or hold a reflex too long',
+      'what happens inside your heart, lungs, or blood vessels under extreme stress or cold',
+      'what happens if you stay awake too long or drink too much energy drink',
+      'Zack D. Films style surprising medical or organ chain reaction inside the human body',
+    ],
+    guidance: 'Deep Dive 3D (Zack D. Films style 3D medical and body explainer with x-ray organs & blood vessels): A fascinating, scientifically accurate "What happens if...?" human body or medical chain-reaction explainer (no gore). Hook question in line 0. 7-8 flowing lines (~95-110 words). Include short 2-word uppercase pill labels.',
   },
   'night-file': {
     scenes: ['cabin', 'walk', 'file', 'vanish', 'door', 'casewall'],
     moods: ['neutral'],
     props: [],
-    guidance: 'A real, respectful unsolved mystery, strange signal, or historical disappearance (never accuse living people, no gore). Open with date + place in line 0. 5-7 calm, suspenseful lines (~80-100 words).',
+    angles: [
+      'eerie real unsolved mystery or baffling historical disappearance',
+      'unexplained radio signal, ghost ship, or strange radar anomaly',
+      'famous cold case file or mysterious heist where the culprit vanished',
+      'spooky historical event or eerie abandoned place with real documented records',
+    ],
+    guidance: 'Night File 3D (dark, moody 3D mystery & case file): A real, respectful unsolved mystery, strange crime case file, unexplained signal, or spooky historical mystery (never accuse living people, no gore). Open with date + place in line 0. 5-7 calm, suspenseful lines (~80-100 words).',
   },
   'inside-out': {
     scenes: ['room', 'xray', 'macro', 'macro_burst', 'bounce', 'myth', 'stopwatch', 'warning', 'end'],
     moods: ['n', 'o', 'smile', 'smirk'],
     props: [],
-    guidance: 'A punchy 2D "What happens when / Why does...?" body or everyday science explainer with a myth-busting twist. Hook question in line 0. 7-8 flowing lines (~90-110 words).',
+    angles: [
+      'everyday human body quirk explained with a quick 2D cutaway (hiccups, brain freeze, goosebumps, yawning)',
+      'popular health or food myth busted with clean science',
+      'surprising biology happening inside your stomach, joints, eyes, or ears right now',
+      'quick everyday physics or chemistry reaction inside your body',
+    ],
+    guidance: 'Inside Out 2D (clean 2D cutaways): A punchy, fast-paced science and health explainer that busts a myth or explains a weird body reaction in plain English. Hook question in line 0. 7-8 flowing lines (~90-110 words).',
   },
   'stick-story': {
     scenes: ['night_living', 'night_kitchen', 'night_hall', 'counter', 'day_living'],
     moods: ['calm', 'happy', 'worried', 'scared', 'determined'],
     props: [],
-    guidance: 'A practical, accurate "What would you do if...?" survival or emergency step-by-step guide (Step 1, Step 2, Step 3). Hook scenario in line 0. 6-7 crisp lines (~85-105 words).',
+    angles: [
+      'what would you do if caught in a rip current, quicksand, or sudden flood',
+      'real survival life hack if your car brakes fail, car sinks, or you are stuck in an elevator',
+      'emergency home safety steps (grease fire, gas leak, power outage, choking alone)',
+      'outdoor survival rule (lightning storm, stray dog, bear encounter, extreme heat/cold)',
+    ],
+    guidance: 'Stick Story 2D (stick-figure survival guide): A practical, life-saving "What would you do if...?" survival life hack or emergency step-by-step guide with clear numbered steps (Step 1, Step 2, Step 3). Hook scenario in line 0. 6-7 crisp lines (~85-105 words).',
   },
   'paper-atlas': {
     scenes: ['map', 'hall', 'harbor', 'night_city', 'fire', 'timeline', 'seal'],
     moods: ['neutral'],
     props: [],
-    guidance: 'A surprising, verified real-world historical event told vividly (no violence/gore). Open with the year and hook in line 0. 6-7 storybook lines (~85-105 words).',
+    angles: [
+      'legendary historic battle won by a genius tactic or unexpected mistake',
+      'rise, secret trick, or sudden fall of an ancient empire',
+      'daring ocean voyage, lost expedition, or world-changing map discovery',
+      'wild turning point in world history that reshaped borders or trade routes',
+    ],
+    guidance: 'Paper Atlas 2D (animated cut-paper maps & gold date ribbons): A vivid, verified story of a historic battle, ancient empire, famous voyage, or world-changing historical twist (no graphic violence). Open with the year and hook in line 0. 6-7 storybook lines (~85-105 words).',
   },
 };
 
@@ -140,12 +178,13 @@ function sanitizeBlueprint(raw, styleId) {
 function buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt = 1) {
   const schema = STYLE_SCHEMAS[styleId] || STYLE_SCHEMAS['tall-tale'];
   const recentUsed = usedTitles.slice(-80).join(' | ');
-  const angles = ['unusual world history', 'human body surprise', 'clever real-world loophole', 'science myth busted', 'engineering marvel', 'weird law or invention', 'ocean or space mystery', 'everyday survival tip'];
+  const angles = schema.angles || ['unusual world history', 'human body surprise', 'clever real-world loophole'];
   const randomAngle = angles[Math.floor(Math.random() * angles.length)];
 
   return `You are a viral YouTube Shorts scriptwriter. Create ONE 100% BRAND-NEW, NEVER-BEFORE-USED 35-second Short in style "${styleId}".
 Style guidance: ${schema.guidance}
-Topic inspiration: ${nicheTopics || randomAngle} (fresh angle seed #${attempt}-${Date.now() % 997}: ${randomAngle}).
+Specific angle for this Short (seed #${attempt}-${Date.now() % 997}): ${randomAngle}.
+Channel theme context: ${nicheTopics || randomAngle}.
 STRICT UNIQUENESS RULE: Do NOT repeat, rephrase, or overlap ANY of these already-used stories:
 ${recentUsed || '(none yet)'}
 

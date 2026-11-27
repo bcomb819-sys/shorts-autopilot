@@ -19,6 +19,8 @@ function initialState() {
       connectedAt: null,
     },
     styleCursor: 0,
+    styleBag: [],
+    lastStyleId: '',
     usedStoryKeys: [],
     usedTitles: [],
     jobs: [],
@@ -84,6 +86,8 @@ function loadState() {
         settings: { ...base.settings, ...(raw.settings || {}) },
         youtube: yt,
         styleCursor: Math.max(Number(raw.styleCursor || 0), Number(hist.styleCursor || 0)),
+        styleBag: Array.isArray(hist.styleBag) && hist.styleBag.length ? hist.styleBag : (Array.isArray(raw.styleBag) ? raw.styleBag : []),
+        lastStyleId: hist.lastStyleId || raw.lastStyleId || '',
         usedStoryKeys: [...new Set([...(Array.isArray(raw.usedStoryKeys) ? raw.usedStoryKeys : []), ...(Array.isArray(hist.usedStoryKeys) ? hist.usedStoryKeys : [])])],
         usedTitles: [...new Set([...(Array.isArray(raw.usedTitles) ? raw.usedTitles : []), ...(Array.isArray(hist.usedTitles) ? hist.usedTitles : [])])],
         jobs,
@@ -95,6 +99,8 @@ function loadState() {
   }
   const fresh = initialState();
   fresh.styleCursor = Number(hist.styleCursor || 0);
+  fresh.styleBag = Array.isArray(hist.styleBag) ? hist.styleBag : [];
+  fresh.lastStyleId = hist.lastStyleId || '';
   fresh.usedStoryKeys = Array.isArray(hist.usedStoryKeys) ? hist.usedStoryKeys : [];
   fresh.usedTitles = Array.isArray(hist.usedTitles) ? hist.usedTitles : [];
   if (fresh.youtube.accounts.length === 0 && fresh.youtube.refreshToken) {
@@ -123,10 +129,12 @@ export function saveState() {
   fs.writeFileSync(tmp, JSON.stringify(state, null, 2));
   fs.renameSync(tmp, DB_PATH);
 
-  // Secret-free deduplication history file safe for GitHub Actions commits
+  // Secret-free deduplication & shuffle-bag history file safe for GitHub Actions commits
   const hTmp = HISTORY_PATH + '.tmp';
   fs.writeFileSync(hTmp, JSON.stringify({
     styleCursor: state.styleCursor,
+    styleBag: state.styleBag || [],
+    lastStyleId: state.lastStyleId || '',
     usedStoryKeys: state.usedStoryKeys,
     usedTitles: state.usedTitles,
   }, null, 2));
@@ -268,9 +276,39 @@ export function markStoryUsed(key, title = '') {
   saveState();
 }
 
+function shuffleArray(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 export function nextStyleId() {
   const enabled = state.settings.enabledStyles?.length ? state.settings.enabledStyles : ['tall-tale'];
-  const id = enabled[state.styleCursor % enabled.length];
+  if (state.settings.styleOrderMode === 'sequential') {
+    const id = enabled[state.styleCursor % enabled.length];
+    state.styleCursor = (state.styleCursor + 1) % 1000000;
+    state.lastStyleId = id;
+    saveState();
+    return id;
+  }
+
+  // Balanced Fisher-Yates Shuffle Bag across ALL enabled styles:
+  // Mixes all 6 styles randomly, guarantees every style is used once before reshuffling,
+  // and never picks the same style twice in a row.
+  let bag = (Array.isArray(state.styleBag) ? state.styleBag : []).filter((s) => enabled.includes(s));
+  if (bag.length === 0) {
+    bag = shuffleArray(enabled);
+    if (bag.length > 1 && bag[0] === state.lastStyleId) {
+      const swapIdx = 1 + Math.floor(Math.random() * (bag.length - 1));
+      [bag[0], bag[swapIdx]] = [bag[swapIdx], bag[0]];
+    }
+  }
+  const id = bag.shift();
+  state.styleBag = bag;
+  state.lastStyleId = id;
   state.styleCursor = (state.styleCursor + 1) % 1000000;
   saveState();
   return id;

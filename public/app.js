@@ -126,6 +126,15 @@ function render(st) {
   $('busyBadge').className = 'badge ' + (st.busy ? 'warn' : 'ok');
   $('queueInfo').textContent = `Queue: ${st.queueLength} · Total: ${st.jobs.length}`;
 
+  if ($('shuffleQueueHint')) {
+    const names = Object.fromEntries((st.styles || []).map((x) => [x.id, x.name]));
+    const bag = (st.styleBag || []).map((id) => names[id] || id);
+    const last = st.lastStyleId ? (names[st.lastStyleId] || st.lastStyleId) : 'None yet';
+    $('shuffleQueueHint').textContent = bag.length
+      ? `Next in shuffle bag: ${bag.join(' → ')} (Last: ${last})`
+      : `Shuffle bag will freshly mix all ${(s.enabledStyles || []).length} enabled styles on next run (Last: ${last})`;
+  }
+
   // Hydrate form inputs once
   if (!initializedForm) {
     initializedForm = true;
@@ -148,7 +157,7 @@ function render(st) {
 
     const sel = $('runStyle');
     const checks = $('styleChecks');
-    sel.innerHTML = '<option value="">Auto-Rotate (All Enabled Styles)</option>';
+    sel.innerHTML = '<option value="">Smart Shuffle (Mix All 6 Styles)</option>';
     checks.innerHTML = '';
     st.styles.forEach((sty) => {
       const opt = document.createElement('option');

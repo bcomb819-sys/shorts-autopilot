@@ -17,7 +17,7 @@ on:
   workflow_dispatch:
     inputs:
       style:
-        description: 'Optional style override (blank = auto-rotate all 6)'
+        description: 'Optional style override (blank = smart shuffle across all 6 styles)'
         required: false
         default: ''
 

@@ -76,6 +76,8 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, {
         settings: st.settings,
         styles: ALL_STYLES,
+        styleBag: st.styleBag || [],
+        lastStyleId: st.lastStyleId || '',
         stats: todayStats(),
         busy: isBusy(),
         queueLength: queueLength(),
@@ -124,6 +126,7 @@ const server = http.createServer(async (req, res) => {
       if (typeof body.dailyLimit === 'number') patch.dailyLimit = Math.max(1, Math.min(50, body.dailyLimit));
       if (typeof body.privacyStatus === 'string') patch.privacyStatus = body.privacyStatus;
       if (Array.isArray(body.enabledStyles) && body.enabledStyles.length) patch.enabledStyles = body.enabledStyles;
+      if (typeof body.styleOrderMode === 'string') patch.styleOrderMode = body.styleOrderMode;
       if (typeof body.autoPost === 'boolean') patch.autoPost = body.autoPost;
       if (typeof body.requireApproval === 'boolean') patch.requireApproval = body.requireApproval;
       if (typeof body.uploadThumbnail === 'boolean') patch.uploadThumbnail = body.uploadThumbnail;
