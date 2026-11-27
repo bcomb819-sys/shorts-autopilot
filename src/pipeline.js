@@ -92,16 +92,20 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
     upsertJob({ id: jobId, status: 'subtitles', stage: 'Aligning word-synced captions with Whisper...' });
     await runCmd(PYTHON_BIN, [path.join(SKILL_DIR, 'scripts', 'words.py'), projDir], { cwd: projDir });
 
-    // 6. Shot check + audio cues + numpy sound/music mix
+    // 6. Shot check + audio cues + numpy sound/music mix (fast low-res WebGL for validation only)
     upsertJob({ id: jobId, status: 'mixing', stage: 'Validating shots & mixing soundtrack...' });
-    const chk = await runCmd(process.execPath, ['tools/capture.mjs', 'check'], { cwd: projDir });
+    const fastCheckEnv = { QS: '&res=0.25&aa=0&shadow=256' };
+    const chk = await runCmd(process.execPath, ['tools/capture.mjs', 'check'], { cwd: projDir, env: fastCheckEnv });
     if (!chk.stdout.includes('CHECK OK')) throw new Error(`Shot check failed: ${chk.stdout.slice(-300)}`);
-    await runCmd(process.execPath, ['tools/capture.mjs', 'cues'], { cwd: projDir });
+    await runCmd(process.execPath, ['tools/capture.mjs', 'cues'], { cwd: projDir, env: fastCheckEnv });
     await runCmd(PYTHON_BIN, ['tools/mix.py', '.'], { cwd: projDir });
 
-    // 7. Capture hero frame & compose high-CTR Cover + YouTube Thumbnail
+    // 7. Capture ultra-sharp hero frame (1 frame at full 1080x1920 + MSAA) & compose vertical Cover + Thumbnail
     upsertJob({ id: jobId, status: 'thumbnail', stage: 'Creating eye-catching cover & thumbnail...' });
-    await runCmd(process.execPath, ['tools/capture.mjs', 'frames', 'review/hero', '1.8'], { cwd: projDir });
+    await runCmd(process.execPath, ['tools/capture.mjs', 'frames', 'review/hero', '1.8'], {
+      cwd: projDir,
+      env: { QS: '&res=1&aa=2&shadow=2048' },
+    });
     const heroFramePath = path.join(projDir, 'review', 'hero', 't1.80.jpg');
     const { coverPath, thumbPath } = await generateThumbnails({
       heroFramePath,
@@ -112,10 +116,15 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
     });
     upsertJob({ id: jobId, coverPath, thumbPath });
 
-    // 8. Render final full-HD 1080x1920 MP4 (native res=1, MSAA, 30 fps)
+    // 8. Render final full-HD 1080x1920 MP4 (native res=1, 30 fps for 2D / 24 fps crisp 1080p for CPU 3D)
     const useDraft = draft !== null ? draft : Boolean(st.settings.draftMode);
+    const is3d = ['tall-tale', 'deep-dive', 'night-file'].includes(story.style);
     const cloudEnv = process.env.SOFTWARE_GL
-      ? { SOFTWARE_GL: process.env.SOFTWARE_GL, QS: process.env.QS || '&res=1&aa=2&shadow=2048', FPS: String(process.env.FPS || 30) }
+      ? {
+          SOFTWARE_GL: process.env.SOFTWARE_GL,
+          QS: process.env.QS || '&res=1&aa=0&shadow=1024',
+          FPS: String(is3d ? (process.env.FPS_3D || 24) : (process.env.FPS || 30)),
+        }
       : { QS: process.env.QS || '&res=1&aa=4&shadow=2048', FPS: String(process.env.FPS || styleMeta.fps || 30) };
     upsertJob({ id: jobId, status: 'rendering', stage: `Rendering Full HD 1080x1920 MP4 (${cloudEnv.FPS} fps)...` });
     const videoArgs = ['tools/capture.mjs', 'video', 'renders/video.mp4'];

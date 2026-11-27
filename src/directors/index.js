@@ -301,7 +301,7 @@ export function buildShots(E) {
   const subj = person('subject'); C.scene.add(subj.group);
   const render = (scene, focusP, extra = {}) => {
     if (cam.fov !== (extra.fov || 34)) { cam.fov = extra.fov || 34; cam.updateProjectionMatrix(); }
-    E.render(scene, cam, { ...NIGHT, focus: cam.position.distanceTo(focusP), aperture: 0.0012, ...extra });
+    E.render(scene, cam, { ...NIGHT, focus: cam.position.distanceTo(focusP), aperture: 0, maxblur: 0, ...extra });
   };
 
   LINES.forEach((ln, i) => {
@@ -321,7 +321,7 @@ export function buildShots(E) {
           render(C.scene, subj.group.position.clone().add(V3(0, 1.2, 0))); blit();
         } else if (sc === 'file') {
           cam.position.set(0, 1.5, -2); cam.lookAt(0, 1.1, -12);
-          render(C.scene, V3(0, 1, 0), { aperture: 0.012, maxblur: 0.016, exposure: 0.9 }); blit();
+          render(C.scene, V3(0, 1, 0), { aperture: 0, maxblur: 0, exposure: 0.9 }); blit();
           K.caseFile(540, 820, 1.22, ln.fileTitle || 'CASE FILE', 0, -0.03);
           K.dateStamp(ln.stamp1 || 'CLASSIFIED', ln.stamp2 || 'ARCHIVE', clamp(lt / 1.1), 240, 1000);
         } else if (sc === 'door') {

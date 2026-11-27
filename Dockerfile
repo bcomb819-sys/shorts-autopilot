@@ -9,8 +9,9 @@ ENV DEBIAN_FRONTEND=noninteractive \
     FACELESS_HOME=/app/.faceless-shorts \
     SKILL_DIR=/app/vendor/faceless-shorts \
     SOFTWARE_GL=1 \
-    QS="&res=1&aa=2&shadow=2048" \
-    FPS=30
+    QS="&res=1&aa=0&shadow=1024" \
+    FPS=30 \
+    FPS_3D=24
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg chromium python3 python3-venv python3-pip ca-certificates curl \

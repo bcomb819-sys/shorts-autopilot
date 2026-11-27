@@ -38,8 +38,9 @@ jobs:
       CHROME: /usr/bin/google-chrome
       CHROME_NO_SANDBOX: '1'
       SOFTWARE_GL: '1'
-      QS: '&res=1&aa=2&shadow=2048'
+      QS: '&res=1&aa=0&shadow=1024'
       FPS: '30'
+      FPS_3D: '24'
 
     steps:
       - name: Checkout repository

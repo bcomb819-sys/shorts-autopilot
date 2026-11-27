@@ -2,6 +2,7 @@
 // witness = near-black with a thin red rim light, subject = solid glowing red (blooms). Each set returns { scene, update(t) }.
 import * as THREE from 'three';
 import { rbox, mesh } from './sdf.js';
+import { SHADOW } from './engine.js';
 
 const std = (color, rough = 0.8, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: rough, ...extra });
 const box = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); o.castShadow = o.receiveShadow = true; return o; };
@@ -25,7 +26,7 @@ export function lightCone(h = 2.6, r = 1.1, color = '#F1D9A6', a = 0.12) {
   return new THREE.Mesh(g, m);
 }
 function lamp(scene, x, y, z, I = 18) {
-  const s = new THREE.SpotLight('#F6DDAE', I, 10, 0.85, 0.6, 1.3); s.position.set(x, y, z); s.target.position.set(x, 0, z); s.castShadow = true; s.shadow.mapSize.set(2048, 2048); s.shadow.bias = -0.0003; s.shadow.radius = 4;
+  const s = new THREE.SpotLight('#F6DDAE', I, 10, 0.85, 0.6, 1.3); s.position.set(x, y, z); s.target.position.set(x, 0, z); s.castShadow = true; s.shadow.mapSize.set(SHADOW, SHADOW); s.shadow.bias = -0.0003; s.shadow.radius = 4;
   scene.add(s, s.target); const fix = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.26, 0.05, 32), new THREE.MeshBasicMaterial({ color: '#FFF0CF' })); fix.position.set(x, y + 0.02, z); scene.add(fix);
   const c = lightCone(y, 1.35); c.position.set(x, y, z); scene.add(c); return s;
 }
@@ -67,7 +68,7 @@ export function caseWall(photos) {
   pins.forEach(([x, y], i) => { const tex = new THREE.CanvasTexture(photos[i % photos.length]); tex.colorSpace = THREE.SRGBColorSpace; const ph = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.05), std('#ffffff', 0.6, { map: tex })); ph.position.set(x, y - 0.42, 0.02 + i * 0.002); ph.rotation.z = (i % 2 ? 1 : -1) * 0.06; ph.castShadow = true; scene.add(ph); const pin = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), std('#D62828', 0.3)); pin.position.set(x, y, 0.06); scene.add(pin); });
   const strM = new THREE.MeshStandardMaterial({ color: '#C21F1F', roughness: 0.6, emissive: '#5A0A0A', emissiveIntensity: 0.6 });
   [[0, 2], [1, 2], [2, 3], [2, 4], [0, 1]].forEach(([a, b]) => { const A = new THREE.Vector3(pins[a][0], pins[a][1], 0.07), Bv = new THREE.Vector3(pins[b][0], pins[b][1], 0.07), mid = A.clone().lerp(Bv, 0.5); mid.z = 0.1; mid.y -= 0.08; scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(A, mid, Bv), 20, 0.012, 6), strM)); });
-  const s = new THREE.SpotLight('#F6DDAE', 30, 10, 0.45, 0.6, 1.3); s.position.set(0.6, 1.4, 4); s.target.position.set(0, 0.2, 0); s.castShadow = true; s.shadow.mapSize.set(2048, 2048); scene.add(s, s.target);
+  const s = new THREE.SpotLight('#F6DDAE', 30, 10, 0.45, 0.6, 1.3); s.position.set(0.6, 1.4, 4); s.target.position.set(0, 0.2, 0); s.castShadow = true; s.shadow.mapSize.set(SHADOW, SHADOW); scene.add(s, s.target);
   scene.add(new THREE.HemisphereLight('#3A2A20', '#000000', 0.25));
   return { scene, update() {} };
 }
