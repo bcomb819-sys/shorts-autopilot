@@ -129,7 +129,7 @@ function render(st) {
     $('ollamaUrl').value = s.ollamaUrl;
     $('ollamaModel').value = s.ollamaModel;
     $('geminiApiKey').value = s.geminiApiKey || '';
-    $('geminiModel').value = s.geminiModel || 'gemini-2.5-flash';
+    $('geminiModel').value = s.geminiModel || 'gemini-flash-lite-latest';
     $('storySource').value = s.storySource === 'hybrid' ? 'auto' : (s.storySource || 'auto');
     $('nicheTopics').value = s.nicheTopics;
     $('ytClientId').value = st.youtube.clientId || '';
@@ -225,7 +225,7 @@ function collectSettings() {
     ollamaUrl: $('ollamaUrl').value,
     ollamaModel: $('ollamaModel').value,
     geminiApiKey: $('geminiApiKey').value.trim(),
-    geminiModel: $('geminiModel').value.trim() || 'gemini-2.5-flash',
+    geminiModel: $('geminiModel').value.trim() || 'gemini-flash-lite-latest',
     storySource: $('storySource').value,
     nicheTopics: $('nicheTopics').value,
   };
@@ -293,9 +293,23 @@ $('copyEnvBtn').onclick = async () => {
   try {
     const { envText } = await api('/api/youtube/export-env');
     await navigator.clipboard.writeText(envText);
-    toast('Copied Cloud .env / GitHub Secrets to clipboard!');
+    toast('Copied all Cloud .env secrets to clipboard!');
   } catch (err) { toast('Copy failed: ' + err.message); }
 };
+
+document.querySelectorAll('.copy-key-btn').forEach((btn) => {
+  btn.onclick = async () => {
+    try {
+      const key = btn.dataset.key;
+      const { envText } = await api('/api/youtube/export-env');
+      const line = envText.split('\n').find((l) => l.startsWith(key + '='));
+      const val = line ? line.slice(key.length + 1).trim() : '';
+      if (!val) return toast(`${key} is empty! Save it in the dashboard first.`);
+      await navigator.clipboard.writeText(val);
+      toast(`Copied ${key}! Now paste it in GitHub's "Secret" box.`);
+    } catch (err) { toast('Copy failed: ' + err.message); }
+  };
+});
 
 $('toggleCredsBtn').onclick = () => {
   $('credsPanel').classList.toggle('hidden');

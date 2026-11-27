@@ -62,7 +62,7 @@ export const DEFAULT_SETTINGS = {
   ollamaUrl: process.env.OLLAMA_URL || 'http://127.0.0.1:11434',
   ollamaModel: process.env.OLLAMA_MODEL || 'llama3.2',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
-  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-lite-latest',
   storySource: 'auto',       // auto (Ollama -> Gemini -> Unused Bank) | ollama | gemini | bank
   nicheTopics: 'crazy true stories, surprising human body science, unsolved mysteries, clever survival tips, wild historical twists',
   uploadThumbnail: false,    // Keep FALSE for YouTube Shorts! Uploading a 16:9 thumbnail via API makes YouTube classify uploads as regular Videos instead of Shorts.

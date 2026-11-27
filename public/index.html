@@ -174,7 +174,7 @@
             <input type="password" id="geminiApiKey" placeholder="AIza... (optional, free at aistudio.google.com)" />
           </label>
           <label>Gemini Model
-            <input type="text" id="geminiModel" value="gemini-2.5-flash" />
+            <input type="text" id="geminiModel" value="gemini-flash-lite-latest" />
           </label>
         </div>
         <label>Story Source Priority
@@ -197,8 +197,12 @@
           <span class="badge ok">CLOUD READY</span>
         </div>
         <p class="hint">No code can run on a powered-off laptop—use either <strong>YouTube Scheduled Batch</strong> above, <strong>GitHub Actions (free cloud cron every 2h)</strong>, or <strong>Docker on a Cloud VPS</strong>.</p>
-        <div class="row">
-          <button id="copyEnvBtn" class="btn btn-sm btn-primary">Copy Cloud .env / GitHub Secrets</button>
+        <div class="row row-tight">
+          <button id="copyEnvBtn" class="btn btn-sm btn-primary">Copy All (.env)</button>
+          <button class="btn btn-sm btn-ghost copy-key-btn" data-key="YT_CLIENT_ID">Copy YT_CLIENT_ID</button>
+          <button class="btn btn-sm btn-ghost copy-key-btn" data-key="YT_CLIENT_SECRET">Copy YT_CLIENT_SECRET</button>
+          <button class="btn btn-sm btn-ghost copy-key-btn" data-key="YT_REFRESH_TOKEN">Copy YT_REFRESH_TOKEN</button>
+          <button class="btn btn-sm btn-ghost copy-key-btn" data-key="GEMINI_API_KEY">Copy GEMINI_API_KEY</button>
         </div>
         <details class="guide">
           <summary>24/7 Cloud Deployment Steps (GitHub Actions or Docker VPS)</summary>

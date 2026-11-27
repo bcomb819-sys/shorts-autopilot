@@ -198,24 +198,32 @@ async function generateWithOllama(styleId, usedTitles, nicheTopics, ollamaUrl, o
 }
 
 async function generateWithGemini(styleId, usedTitles, nicheTopics, apiKey, model, attempt) {
-  const m = model || 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt) }] }],
-      generationConfig: {
-        temperature: 0.95,
-        responseMimeType: 'application/json',
-      },
-    }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(`Gemini API failed (${res.status}): ${data.error?.message || JSON.stringify(data).slice(0, 180)}`);
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-  return sanitizeBlueprint(JSON.parse(cleaned), styleId);
+  const candidates = [...new Set([model || 'gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'])];
+  let lastErr = null;
+  for (const m of candidates) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt) }] }],
+        generationConfig: {
+          temperature: 0.95,
+          responseMimeType: 'application/json',
+        },
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      lastErr = new Error(`Gemini (${m}) failed (${res.status}): ${data.error?.message || JSON.stringify(data).slice(0, 160)}`);
+      if (res.status === 404 || res.status === 429) continue;
+      throw lastErr;
+    }
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+    return sanitizeBlueprint(JSON.parse(cleaned), styleId);
+  }
+  throw lastErr || new Error('All Gemini fallback models failed.');
 }
 
 export async function generateUniqueStory(styleId, { forceSource = null } = {}) {

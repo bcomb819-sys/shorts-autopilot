@@ -206,7 +206,7 @@ const server = http.createServer(async (req, res) => {
         `YT_CLIENT_SECRET=${st.youtube.clientSecret || ''}`,
         `YT_REFRESH_TOKEN=${st.youtube.refreshToken || ''}`,
         `GEMINI_API_KEY=${st.settings.geminiApiKey || ''}`,
-        `GEMINI_MODEL=${st.settings.geminiModel || 'gemini-2.5-flash'}`,
+        `GEMINI_MODEL=${st.settings.geminiModel || 'gemini-flash-lite-latest'}`,
       ].join('\n');
       return sendJson(res, 200, { envText, connected: isYouTubeConnected() });
     }
