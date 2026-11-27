@@ -1,12 +1,11 @@
 {
-  "styleCursor": 5,
+  "styleCursor": 6,
   "styleBag": [
-    "deep-dive",
     "paper-atlas",
     "stick-story",
     "night-file"
   ],
-  "lastStyleId": "tall-tale",
+  "lastStyleId": "deep-dive",
   "usedStoryKeys": [
     "io-crack-knuckles",
     "tt-eiffel-twice",
@@ -15,7 +14,8 @@
     "ai-46ebfb888e7b",
     "ai-fda656eec1cf",
     "ai-b0c768ed1185",
-    "ai-57e0583a27da"
+    "ai-57e0583a27da",
+    "ai-b524c6994991"
   ],
   "usedTitles": [
     "The Con Man Who Sold the Eiffel Tower Twice",
@@ -24,6 +24,7 @@
     "The Bridge That Almost Broke Physics",
     "Why Your Eyes Are Playing Tricks On You",
     "Why Your Bones Are Screaming Right Now",
-    "How One Man Tricked Coca-Cola For Years"
+    "How One Man Tricked Coca-Cola For Years",
+    "What Happens If You Swear Too Much?"
   ]
 }
