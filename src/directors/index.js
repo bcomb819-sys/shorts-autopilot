@@ -82,9 +82,9 @@ export function buildShots(E) {
   const cut = (i) => (i === 0 ? 0 : L(i) - 0.06);
   const cam = camera(42);
   const LOOKS = {
-    street: { bloom: 0.16, aperture: 0.001, maxblur: 0.007, fov: 44 },
-    room: { bloom: 0.25, aperture: 0.0009, maxblur: 0.007, fov: 44 },
-    field: { bloom: 0.24, aperture: 0.001, maxblur: 0.007, fov: 44 },
+    street: { bloom: 0.14, aperture: 0, maxblur: 0, fov: 44 },
+    room: { bloom: 0.2, aperture: 0, maxblur: 0, fov: 44 },
+    field: { bloom: 0.18, aperture: 0, maxblur: 0, fov: 44 },
   };
   const shoot = (scene, people, from, to, at, at2, k, look) => {
     if (cam.fov !== (look.fov || 44)) { cam.fov = look.fov || 44; cam.updateProjectionMatrix(); }
@@ -185,9 +185,9 @@ export function buildShots(E) {
   const S = [], CUES = [], add = (o) => (S.push(o), o), cue = (t, type, o = {}) => CUES.push({ t: +t.toFixed(3), type, ...o });
   const cut = (i) => (i === 0 ? 0 : L(i) - 0.08);
   const cam = camera(30);
-  const KLOOK = { aperture: 0.003, maxblur: 0.01, bloom: 0.2 };
-  const XLOOK = { aperture: 0.0015, bloom: 0.55, bloomThreshold: 0.4, vignette: 0.45 };
-  const VLOOK = { aperture: 0.005, maxblur: 0.012, bloom: 0.6, bloomThreshold: 0.5, focus: 3.2 };
+  const KLOOK = { aperture: 0, maxblur: 0, bloom: 0.14, grain: 0.006, vignette: 0.18 };
+  const XLOOK = { aperture: 0, maxblur: 0, bloom: 0.45, bloomThreshold: 0.45, grain: 0.006, vignette: 0.32 };
+  const VLOOK = { aperture: 0, maxblur: 0, bloom: 0.48, bloomThreshold: 0.55, grain: 0.008, focus: 3.2 };
 
   const K = SETS.kitchen(E), hero = new Human({}); hero.group.position.set(0.1, 0, -0.6); K.scene.add(hero.group);
   const X = SETS.xrayStage(E), xh = new Human({}), xmat = SETS.xrayMaterial(); xh.setBodyMaterial(xmat);
@@ -390,11 +390,21 @@ export function buildShots() {
           }
           if (ln.label) K.tag(ln.label, 540, 470, 540, 700 + bob, 60, eob(seg(lt, 0.15, 0.45)));
         } else if (sc === 'bounce') {
-          ctx.fillStyle = C.bg; ctx.fillRect(-300, -300, W + 600, H + 600);
-          const sx = Math.abs(Math.sin(lt * 3.4));
-          K.gum(540, 790, 4.2, 0, 1 + 0.28 * sx, 1 - 0.14 * sx);
-          if (ln.label) K.pill(ln.label, 540, 430, 52, C.ink, C.white, eob(seg(lt, 0.1, 0.35)));
-          for (const sd of [-1, 1]) K.chomper(540 + sd * (340 + Math.sin(lt * 6) * 55), 800, 88, 0.15 + 0.45 * Math.abs(Math.sin(lt * 14)), sd > 0);
+          K.xray(t);
+          const pulse = Math.abs(Math.sin(lt * 3.8));
+          // Glowing radial pulse rings + pressure/reaction burst instead of plain beige background
+          for (let r = 0; r < 3; r++) {
+            const ph = (lt * 0.9 + r / 3) % 1;
+            ctx.save(); ctx.globalAlpha = 0.45 * (1 - ph); ctx.strokeStyle = r % 2 ? C.yellow : C.cyan; ctx.lineWidth = 10;
+            ctx.beginPath(); ctx.arc(540, 820, 120 + ph * 340, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+          }
+          K.heart(540, 820, 1.45 + 0.18 * pulse, pulse);
+          for (let p = 0; p < 12; p++) {
+            const an = p * (Math.PI * 2 / 12) + lt * 0.9, dd = 210 + 55 * Math.sin(lt * 4 + p);
+            ctx.save(); ctx.globalAlpha = 0.85; ctx.fillStyle = p % 2 ? C.cyan : C.yellow;
+            ctx.beginPath(); ctx.arc(540 + Math.cos(an) * dd, 820 + Math.sin(an) * dd, 14, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+          }
+          if (ln.label) K.pill(ln.label, 540, 410, 56, C.yellow, C.ink, eob(seg(lt, 0.1, 0.35)));
         } else if (sc === 'myth') {
           ctx.fillStyle = C.bg; ctx.fillRect(-300, -300, W + 600, H + 600);
           const drop = eob(seg(lt, 0, 0.4));

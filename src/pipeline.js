@@ -112,40 +112,40 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
     });
     upsertJob({ id: jobId, coverPath, thumbPath });
 
-    // 8. Render final 1080x1920 MP4 (auto-uses SOFTWARE_GL on headless Linux cloud servers without GPU)
+    // 8. Render final full-HD 1080x1920 MP4 (native res=1, MSAA, 30 fps)
     const useDraft = draft !== null ? draft : Boolean(st.settings.draftMode);
     const cloudEnv = process.env.SOFTWARE_GL
-      ? { SOFTWARE_GL: process.env.SOFTWARE_GL, QS: process.env.QS || '&res=0.75&aa=0&shadow=1024', FPS: String(process.env.FPS || 24) }
-      : { FPS: String(styleMeta.fps) };
-    upsertJob({ id: jobId, status: 'rendering', stage: `Rendering 1080x1920 MP4 (${cloudEnv.FPS} fps)...` });
+      ? { SOFTWARE_GL: process.env.SOFTWARE_GL, QS: process.env.QS || '&res=1&aa=2&shadow=2048', FPS: String(process.env.FPS || 30) }
+      : { QS: process.env.QS || '&res=1&aa=4&shadow=2048', FPS: String(process.env.FPS || styleMeta.fps || 30) };
+    upsertJob({ id: jobId, status: 'rendering', stage: `Rendering Full HD 1080x1920 MP4 (${cloudEnv.FPS} fps)...` });
     const videoArgs = ['tools/capture.mjs', 'video', 'renders/video.mp4'];
     if (useDraft) videoArgs.push('--draft');
     await runCmd(process.execPath, videoArgs, {
       cwd: projDir,
       env: cloudEnv,
-      timeoutMs: 900_000,
+      timeoutMs: 1_800_000,
     });
 
     const rawVideoPath = path.join(projDir, 'renders', 'video.mp4');
     let videoPath = rawVideoPath;
 
-    // 8b. Enforce strict YouTube Shorts compliance (1080x1920 9:16, <= 59s) + optional 0.15s vertical cover flash on frame 1
+    // 8b. Enforce strict YouTube Shorts compliance (1080x1920 9:16, <= 59s, high-bitrate H.264) + 0.20s vertical cover frame at 0:00
     if (st.settings.bakeVerticalCover !== false && fs.existsSync(coverPath)) {
       const coveredPath = path.join(projDir, 'renders', 'short.mp4');
       try {
         await runCmd('ffmpeg', [
           '-y', '-v', 'error',
-          '-loop', '1', '-t', '0.16', '-framerate', String(cloudEnv.FPS), '-i', coverPath,
-          '-f', 'lavfi', '-t', '0.16', '-i', 'anullsrc=r=48000:cl=stereo',
+          '-loop', '1', '-t', '0.20', '-framerate', String(cloudEnv.FPS), '-i', coverPath,
+          '-f', 'lavfi', '-t', '0.20', '-i', 'anullsrc=r=48000:cl=stereo',
           '-i', rawVideoPath,
           '-filter_complex',
-          '[0:v]scale=1080:1920,setsar=1,format=yuv420p[cv];[2:v]scale=1080:1920,setsar=1,format=yuv420p[mv];[cv][1:a][mv][2:a]concat=n=2:v=1:a=1[v][a]',
+          '[0:v]scale=1080:1920:flags=lanczos,setsar=1,format=yuv420p[cv];[2:v]scale=1080:1920:flags=lanczos,setsar=1,format=yuv420p[mv];[cv][1:a][mv][2:a]concat=n=2:v=1:a=1[v][a]',
           '-map', '[v]', '-map', '[a]',
           '-t', '59',
-          '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '19', '-pix_fmt', 'yuv420p',
+          '-c:v', 'libx264', '-preset', 'medium', '-crf', '15', '-profile:v', 'high', '-level', '4.2', '-pix_fmt', 'yuv420p',
           '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
           coveredPath,
-        ], { cwd: projDir, timeoutMs: 180_000 });
+        ], { cwd: projDir, timeoutMs: 240_000 });
         if (fs.existsSync(coveredPath) && fs.statSync(coveredPath).size > 100_000) {
           videoPath = coveredPath;
         }
@@ -200,9 +200,8 @@ export async function uploadJobToYouTube(jobId, { publishAt = null, accountId = 
   try {
     const res = await uploadShort({
       videoPath: job.videoPath,
-      // IMPORTANT: Never send a 16:9 thumbnail to thumbnails.set unless user explicitly enables it,
-      // because a 16:9 custom thumbnail causes YouTube to classify vertical uploads as regular Videos instead of Shorts.
-      thumbnailPath: st.settings.uploadThumbnail ? job.thumbPath : null,
+      // Send the 9:16 vertical 1080x1920 cover.jpg (NOT 16:9) AFTER YouTube finishes processing the Short
+      thumbnailPath: st.settings.uploadThumbnail !== false ? (job.coverPath || job.thumbPath) : null,
       title: job.title,
       description: job.description,
       tags: job.tags,

@@ -65,8 +65,8 @@ export const DEFAULT_SETTINGS = {
   geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-lite-latest',
   storySource: 'auto',       // auto (Ollama -> Gemini -> Unused Bank) | ollama | gemini | bank
   nicheTopics: 'crazy true stories, surprising human body science, unsolved mysteries, clever survival tips, wild historical twists',
-  uploadThumbnail: false,    // Keep FALSE for YouTube Shorts! Uploading a 16:9 thumbnail via API makes YouTube classify uploads as regular Videos instead of Shorts.
-  bakeVerticalCover: true,   // Prepend 0.15s of the 1080x1920 vertical cover frame so YouTube Shorts shows an eye-catching cover automatically
+  uploadThumbnail: true,     // Uploads 9:16 vertical 1080x1920 cover.jpg via thumbnails.set AFTER YouTube finishes processing the Short
+  bakeVerticalCover: true,   // Also prepends 0.20s of 1080x1920 cover.jpg on frame 0 as a mobile-app fallback
   draftMode: false,
   nextRunAt: null,
 };

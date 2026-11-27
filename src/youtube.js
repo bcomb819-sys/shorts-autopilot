@@ -193,11 +193,39 @@ export async function refreshAccountInfo(accountId = null) {
   return updated;
 }
 
+async function waitForYouTubeProcessing(videoId, token, maxWaitMs = 120_000) {
+  const start = Date.now();
+  // Give YouTube a brief head-start before first poll
+  await new Promise((r) => setTimeout(r, 6000));
+  while (Date.now() - start < maxWaitMs) {
+    try {
+      const res = await fetch(
+        `https://www.googleapis.com/youtube/v3/videos?part=processingDetails,status&id=${encodeURIComponent(videoId)}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const item = data?.items?.[0];
+        const pStatus = item?.processingDetails?.processingStatus;
+        const uStatus = item?.status?.uploadStatus;
+        if (pStatus === 'succeeded' || uStatus === 'processed') {
+          return { ready: true, status: pStatus || uStatus };
+        }
+        if (pStatus === 'failed' || uStatus === 'failed' || uStatus === 'rejected') {
+          return { ready: false, status: pStatus || uStatus };
+        }
+      }
+    } catch {}
+    await new Promise((r) => setTimeout(r, 6000));
+  }
+  return { ready: false, status: 'timeout' };
+}
+
 /**
  * Hands-free resumable upload to YouTube Shorts (Data API v3).
- * Ensures Shorts-only classification:
+ * Ensures Shorts-only classification & vertical custom thumbnail:
  *  - Appends #Shorts to Title and Description
- *  - Skips 16:9 thumbnails.set by default (which forces YouTube to classify uploads as regular Videos instead of Shorts)
+ *  - Waits for YouTube processing to finish before calling thumbnails.set with 9:16 vertical cover.jpg
  */
 export async function uploadShort({ videoPath, thumbnailPath = null, title, description, tags = [], categoryId = '27', privacyStatus = 'public', publishAt = null, accountId = null }) {
   const token = await getAccessToken(accountId);
@@ -265,6 +293,8 @@ export async function uploadShort({ videoPath, thumbnailPath = null, title, desc
   let thumbnailNote = '';
   if (thumbnailPath && fs.existsSync(thumbnailPath)) {
     try {
+      // CRITICAL for YouTube Shorts: wait until processing succeeds so YouTube does not overwrite/ignore the custom thumbnail
+      const proc = await waitForYouTubeProcessing(uploaded.id, token);
       const thumbBytes = fs.readFileSync(thumbnailPath);
       const tRes = await fetch(
         `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(uploaded.id)}&uploadType=media`,
@@ -278,8 +308,15 @@ export async function uploadShort({ videoPath, thumbnailPath = null, title, desc
           body: thumbBytes,
         },
       );
-      if (tRes.ok) thumbnailUploaded = true;
-      else thumbnailNote = `Thumbnail skipped (${tRes.status}): ${(await tRes.text()).slice(0, 140)}`;
+      if (tRes.ok) {
+        thumbnailUploaded = true;
+        thumbnailNote = proc.ready ? 'Vertical 9:16 Shorts cover attached after processing' : `Vertical cover attached (status: ${proc.status})`;
+      } else {
+        const errBody = (await tRes.text()).slice(0, 180);
+        thumbnailNote = tRes.status === 403
+          ? `Thumbnail blocked (403 — verify phone number in YouTube Studio -> Settings -> Channel -> Feature eligibility): ${errBody}`
+          : `Thumbnail skipped (${tRes.status}): ${errBody}`;
+      }
     } catch (err) {
       thumbnailNote = `Thumbnail error: ${err.message}`;
     }

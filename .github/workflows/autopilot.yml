@@ -27,7 +27,7 @@ permissions:
 jobs:
   generate-and-post:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
       YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
@@ -38,8 +38,8 @@ jobs:
       CHROME: /usr/bin/google-chrome
       CHROME_NO_SANDBOX: '1'
       SOFTWARE_GL: '1'
-      QS: '&res=0.65&aa=0&shadow=1024'
-      FPS: '24'
+      QS: '&res=1&aa=2&shadow=2048'
+      FPS: '30'
 
     steps:
       - name: Checkout repository
