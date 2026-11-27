@@ -8,6 +8,7 @@ import { uploadJobToYouTube } from './pipeline.js';
 import { enqueueRun, isBusy, queueLength, scheduleNext, startScheduler, triggerAutopilotToggle } from './scheduler.js';
 import { addLog, getAccounts, getActiveAccount, getJob, getState, removeAccount, setActiveAccount, todayStats, updateSettings, updateYouTube, upsertJob } from './store.js';
 import { checkOllamaStatus, offlineBankSummary } from './story-engine.js';
+import { sendUploadNotification } from './notify.js';
 import { attachCoverThumbnail, exchangeCode, getAuthUrl, isYouTubeConnected, redirectUri, refreshAccountInfo } from './youtube.js';
 
 const PUBLIC_DIR = path.join(APP_ROOT, 'public');
@@ -213,6 +214,17 @@ const server = http.createServer(async (req, res) => {
         `GEMINI_MODEL=${st.settings.geminiModel || 'gemini-flash-lite-latest'}`,
       ].join('\n');
       return sendJson(res, 200, { envText, connected: isYouTubeConnected() });
+    }
+
+    // ── API: Test Instant Phone Alert Bot ──
+    if (req.method === 'POST' && pathname === '/api/notify/test') {
+      const resNotify = await sendUploadNotification({
+        title: 'Test Alert — StoryByteStories Bot Active!',
+        styleName: 'Shorts Autopilot',
+        youtubeUrl: 'https://www.youtube.com/@storybyte_stories/shorts',
+        customText: 'Heyyy boss! Your upload alert bot is connected! Every time I post a Short, you will get this message with the direct link.',
+      });
+      return sendJson(res, 200, { ok: true, ...resNotify });
     }
 
     // ── API: Run 1 Short, Batch, or Laptop-Off Staggered YouTube Schedule ──

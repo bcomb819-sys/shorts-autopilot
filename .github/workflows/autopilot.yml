@@ -33,6 +33,11 @@ jobs:
       YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
       YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC || 'storybyte-boss-701927' }}
+      WHATSAPP_PHONE: '+917019192787'
+      CALLMEBOT_API_KEY: ${{ secrets.CALLMEBOT_API_KEY }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
       SKILL_DIR: ${{ github.workspace }}/vendor/faceless-shorts
       FACELESS_HOME: ${{ github.workspace }}/.faceless-shorts
       CHROME: /usr/bin/google-chrome

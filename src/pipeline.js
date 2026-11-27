@@ -7,6 +7,7 @@ import { writeProjectFiles } from './directors/index.js';
 import { addLog, getJob, getState, markStoryUsed, nextStyleId, upsertJob } from './store.js';
 import { generateUniqueStory } from './story-engine.js';
 import { generateThumbnails } from './thumbnail.js';
+import { sendUploadNotification } from './notify.js';
 import { isYouTubeConnected, uploadShort } from './youtube.js';
 
 function runCmd(bin, args, { cwd, env = {}, timeoutMs = 420_000 } = {}) {
@@ -234,6 +235,13 @@ export async function uploadJobToYouTube(jobId, { publishAt = null, accountId = 
       error: null,
     });
     addLog('INFO', `${schedTime ? 'Scheduled' : 'Published'} on YouTube: ${res.url}${res.thumbnailNote ? ` (${res.thumbnailNote})` : ''}`, jobId);
+    // Notify the boss's phone immediately once the video is live!
+    await sendUploadNotification({
+      title: job.title,
+      styleName: job.styleName || job.style,
+      youtubeUrl: res.url,
+      jobId,
+    });
     return getJob(jobId);
   } catch (err) {
     upsertJob({ id: jobId, status: 'failed', stage: 'Upload failed (click Upload to retry)', error: err.message });

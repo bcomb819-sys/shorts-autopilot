@@ -68,6 +68,9 @@ export const DEFAULT_SETTINGS = {
   nicheTopics: 'funny true stories & heists, Zack D. Films body & medical what-ifs, 2D science & health cutaways, survival life hacks, dark unsolved mysteries, historic battles & ancient empires',
   uploadThumbnail: true,     // Uploads 9:16 vertical 1080x1920 cover.jpg via thumbnails.set AFTER YouTube finishes processing the Short
   bakeVerticalCover: true,   // Also prepends 0.20s of 1080x1920 cover.jpg on frame 0 as a mobile-app fallback
+  ntfyTopic: process.env.NTFY_TOPIC || 'storybyte-boss-701927', // Instant $0 phone push alert topic (ntfy app)
+  whatsappPhone: process.env.WHATSAPP_PHONE || '+917019192787',
+  callmebotApiKey: process.env.CALLMEBOT_API_KEY || '',
   draftMode: false,
   nextRunAt: null,
 };
