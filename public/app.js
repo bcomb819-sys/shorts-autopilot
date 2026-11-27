@@ -188,6 +188,7 @@ function render(st) {
           + `<button class="btn btn-sm btn-ghost" onclick="copyJobField('${j.id}','desc')">Copy Desc</button>`
           + `<button class="btn btn-sm btn-ghost" onclick="copyJobField('${j.id}','tags')">Copy Tags</button>`
           + `<button class="btn btn-sm btn-ghost" onclick="openJobFolder('${j.id}')">Open Folder</button>`
+          + (j.coverPath && st.youtube.connected ? `<button class="btn btn-sm btn-green" onclick="attachThumb('${j.id}')">${j.thumbnailUploaded ? '✓ Re-Attach Cover' : 'Attach Cover Thumbnail (50u)'}</button>` : '')
           + (!j.youtubeUrl ? `<button class="btn btn-sm ${j.status === 'manual_posted' ? 'btn-green' : 'btn-ghost'}" onclick="markManualPosted('${j.id}')">${j.status === 'manual_posted' ? '✓ Manual Posted' : 'Mark Manual Posted'}</button>` : '')
         : '';
       const tagsText = (j.tags || []).map((t) => `#${t}`).join(' ');
@@ -430,6 +431,21 @@ window.openJobFolder = async (id) => {
     await api(`/api/jobs/${encodeURIComponent(id)}/open-folder`, { method: 'POST' });
     toast('Opened folder in File Explorer — drag the MP4 into YouTube Studio!');
   } catch (err) { toast('Error: ' + err.message); }
+};
+
+window.attachThumb = async (id) => {
+  const j = (latestState?.jobs || []).find((x) => x.id === id);
+  let target = j?.youtubeUrl || j?.youtubeId || '';
+  if (!target) {
+    target = window.prompt('Paste your uploaded YouTube Short URL (e.g. https://youtube.com/shorts/...) or Video ID:');
+    if (!target) return;
+  }
+  try {
+    toast('Waiting for YouTube processing & attaching 1080×1920 vertical cover...');
+    await api(`/api/jobs/${encodeURIComponent(id)}/attach-thumbnail`, { method: 'POST', body: { videoIdOrUrl: target } });
+    toast('Vertical 9:16 Shorts cover thumbnail attached!');
+    refresh();
+  } catch (err) { toast('Thumbnail failed: ' + err.message); }
 };
 
 window.markManualPosted = async (id) => {

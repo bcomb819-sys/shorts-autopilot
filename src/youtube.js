@@ -330,3 +330,39 @@ export async function uploadShort({ videoPath, thumbnailPath = null, title, desc
     thumbnailNote,
   };
 }
+
+export function extractYouTubeId(input) {
+  const s = String(input || '').trim();
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  const m = s.match(/(?:shorts\/|youtu\.be\/|[?&]v=|video\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Attach a vertical 9:16 (1080x1920) cover.jpg thumbnail to an already-uploaded YouTube Short (costs only 50 API units).
+ */
+export async function attachCoverThumbnail({ videoIdOrUrl, thumbnailPath, accountId = null }) {
+  const videoId = extractYouTubeId(videoIdOrUrl);
+  if (!videoId) throw new Error('Invalid YouTube Short URL or 11-character Video ID.');
+  if (!thumbnailPath || !fs.existsSync(thumbnailPath)) throw new Error('Cover thumbnail file not found on disk.');
+  const token = await getAccessToken(accountId);
+  const proc = await waitForYouTubeProcessing(videoId, token, 90_000);
+  const thumbBytes = fs.readFileSync(thumbnailPath);
+  const tRes = await fetch(
+    `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(videoId)}&uploadType=media`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'image/jpeg',
+        'Content-Length': String(thumbBytes.length),
+      },
+      body: thumbBytes,
+    },
+  );
+  if (!tRes.ok) {
+    const errBody = (await tRes.text()).slice(0, 220);
+    throw new Error(`YouTube thumbnail upload failed (${tRes.status}): ${errBody}`);
+  }
+  return { videoId, url: `https://www.youtube.com/shorts/${videoId}`, processingStatus: proc.status };
+}

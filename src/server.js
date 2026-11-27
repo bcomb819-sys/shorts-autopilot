@@ -8,7 +8,7 @@ import { uploadJobToYouTube } from './pipeline.js';
 import { enqueueRun, isBusy, queueLength, scheduleNext, startScheduler, triggerAutopilotToggle } from './scheduler.js';
 import { addLog, getAccounts, getActiveAccount, getJob, getState, removeAccount, setActiveAccount, todayStats, updateSettings, updateYouTube, upsertJob } from './store.js';
 import { checkOllamaStatus, offlineBankSummary } from './story-engine.js';
-import { exchangeCode, getAuthUrl, isYouTubeConnected, redirectUri, refreshAccountInfo } from './youtube.js';
+import { attachCoverThumbnail, exchangeCode, getAuthUrl, isYouTubeConnected, redirectUri, refreshAccountInfo } from './youtube.js';
 
 const PUBLIC_DIR = path.join(APP_ROOT, 'public');
 const MIME = {
@@ -255,6 +255,32 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && uploadMatch) {
       const job = await uploadJobToYouTube(decodeURIComponent(uploadMatch[1]));
       return sendJson(res, 200, { ok: true, job });
+    }
+
+    // ── API: Attach 9:16 Cover Thumbnail to a manually uploaded YouTube Short (only 50 API units!) ──
+    const attachThumbMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/attach-thumbnail$/);
+    if (req.method === 'POST' && attachThumbMatch) {
+      const id = decodeURIComponent(attachThumbMatch[1]);
+      const job = getJob(id);
+      if (!job) return sendJson(res, 404, { error: 'Job not found' });
+      const body = await readBody(req);
+      const targetId = body.videoIdOrUrl || job.youtubeId || job.youtubeUrl;
+      const resThumb = await attachCoverThumbnail({
+        videoIdOrUrl: targetId,
+        thumbnailPath: job.coverPath || job.thumbPath,
+      });
+      const updated = upsertJob({
+        id,
+        youtubeId: resThumb.videoId,
+        youtubeUrl: resThumb.url,
+        thumbnailUploaded: true,
+        thumbnailNote: 'Vertical 9:16 Shorts cover attached (50 units)',
+        status: job.status === 'posted' ? 'posted' : 'manual_posted',
+        stage: job.status === 'posted' ? 'Live on YouTube (with vertical cover)' : 'Manually posted + Vertical cover attached',
+        manualPostedAt: job.manualPostedAt || new Date().toISOString(),
+      });
+      addLog('INFO', `Attached vertical 9:16 cover thumbnail to ${resThumb.url}`, id);
+      return sendJson(res, 200, { ok: true, job: updated });
     }
 
     // ── API: Mark a rendered job as Manually Uploaded (0 API quota tracker) ──
