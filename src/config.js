@@ -42,12 +42,12 @@ export const CHROME_BIN = [
 ].find((p) => p && fs.existsSync(p));
 
 export const ALL_STYLES = [
-  { id: 'tall-tale', name: 'Tall Tale 3D', voice: 'am_michael', speed: 1.06, music: 'bounce', fps: 30, categoryId: '23', desc: 'Funny true stories, crazy loopholes, heists & weird history in a bright 3D miniature world' },
-  { id: 'deep-dive', name: 'Deep Dive 3D', voice: 'am_michael', speed: 1.02, music: 'tension', fps: 24, categoryId: '27', desc: 'Zack D. Films style 3D medical & body explainers with x-ray organs' },
-  { id: 'inside-out', name: 'Inside Out 2D', voice: 'am_michael', speed: 1.04, music: 'bed', fps: 30, categoryId: '27', desc: 'Quick science & health explainers in clean 2D cutaways' },
-  { id: 'stick-story', name: 'Stick Story 2D', voice: 'am_puck', speed: 1.05, music: 'bed', fps: 30, categoryId: '27', desc: 'Survival life hacks & "What would you do if..." scenarios with stick figures' },
-  { id: 'night-file', name: 'Night File 3D', voice: 'am_onyx', speed: 0.96, music: 'tension', fps: 24, categoryId: '24', desc: 'Dark, eerie unsolved mysteries, crime stories & spooky history' },
-  { id: 'paper-atlas', name: 'Paper Atlas 2D', voice: 'bm_george', speed: 1.0, music: 'tension', fps: 30, categoryId: '27', desc: 'Historic battles, ancient empires & voyages on animated paper maps' },
+  { id: 'tall-tale', name: 'Tall Tale 3D', voice: 'am_michael', voiceLabel: 'Michael (US Male · Storyteller)', speed: 1.06, music: 'bounce', fps: 30, categoryId: '23', desc: 'Funny true stories, crazy loopholes, heists & weird history in a bright 3D miniature world' },
+  { id: 'deep-dive', name: 'Deep Dive 3D', voice: 'am_fenrir', voiceLabel: 'Fenrir (US Male · Deep Science)', speed: 1.02, music: 'tension', fps: 24, categoryId: '27', desc: 'Zack D. Films style 3D medical & body explainers with x-ray organs' },
+  { id: 'inside-out', name: 'Inside Out 2D', voice: 'af_heart', voiceLabel: 'Heart (US Female · Warm Explainer)', speed: 1.04, music: 'bed', fps: 30, categoryId: '27', desc: 'Quick science & health explainers in clean 2D cutaways' },
+  { id: 'stick-story', name: 'Stick Story 2D', voice: 'am_puck', voiceLabel: 'Puck (US Male · Lively Survival)', speed: 1.05, music: 'bed', fps: 30, categoryId: '27', desc: 'Survival life hacks & "What would you do if..." scenarios with stick figures' },
+  { id: 'night-file', name: 'Night File 3D', voice: 'am_onyx', voiceLabel: 'Onyx (US Male · Dark Mystery)', speed: 0.95, music: 'tension', fps: 24, categoryId: '24', desc: 'Dark, eerie unsolved mysteries, crime stories & spooky history' },
+  { id: 'paper-atlas', name: 'Paper Atlas 2D', voice: 'bm_george', voiceLabel: 'George (UK Male · Documentary)', speed: 1.0, music: 'tension', fps: 30, categoryId: '27', desc: 'Historic battles, ancient empires & voyages on animated paper maps' },
 ];
 
 export const DEFAULT_SETTINGS = {

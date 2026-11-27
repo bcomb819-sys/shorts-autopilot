@@ -193,10 +193,10 @@ export async function refreshAccountInfo(accountId = null) {
   return updated;
 }
 
-async function waitForYouTubeProcessing(videoId, token, maxWaitMs = 120_000) {
+async function waitForYouTubeProcessing(videoId, token, maxWaitMs = 150_000) {
   const start = Date.now();
   // Give YouTube a brief head-start before first poll
-  await new Promise((r) => setTimeout(r, 6000));
+  await new Promise((r) => setTimeout(r, 8000));
   while (Date.now() - start < maxWaitMs) {
     try {
       const res = await fetch(
@@ -208,7 +208,9 @@ async function waitForYouTubeProcessing(videoId, token, maxWaitMs = 120_000) {
         const item = data?.items?.[0];
         const pStatus = item?.processingDetails?.processingStatus;
         const uStatus = item?.status?.uploadStatus;
-        if (pStatus === 'succeeded' || uStatus === 'processed') {
+        if (pStatus === 'succeeded' || (uStatus === 'processed' && Date.now() - start > 35_000)) {
+          // Small settle pause so YouTube Shorts pipeline locks in our custom thumbnail cleanly
+          await new Promise((r) => setTimeout(r, 3000));
           return { ready: true, status: pStatus || uStatus };
         }
         if (pStatus === 'failed' || uStatus === 'failed' || uStatus === 'rejected') {
@@ -296,18 +298,23 @@ export async function uploadShort({ videoPath, thumbnailPath = null, title, desc
       // CRITICAL for YouTube Shorts: wait until processing succeeds so YouTube does not overwrite/ignore the custom thumbnail
       const proc = await waitForYouTubeProcessing(uploaded.id, token);
       const thumbBytes = fs.readFileSync(thumbnailPath);
-      const tRes = await fetch(
-        `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(uploaded.id)}&uploadType=media`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'image/jpeg',
-            'Content-Length': String(thumbBytes.length),
+      let tRes;
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        tRes = await fetch(
+          `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(uploaded.id)}&uploadType=media`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'image/jpeg',
+              'Content-Length': String(thumbBytes.length),
+            },
+            body: thumbBytes,
           },
-          body: thumbBytes,
-        },
-      );
+        );
+        if (tRes.ok || tRes.status === 403 || tRes.status === 400) break;
+        await new Promise((r) => setTimeout(r, 5000));
+      }
       if (tRes.ok) {
         thumbnailUploaded = true;
         thumbnailNote = proc.ready ? 'Vertical 9:16 Shorts cover attached after processing' : `Vertical cover attached (status: ${proc.status})`;

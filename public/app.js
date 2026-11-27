@@ -166,8 +166,9 @@ function render(st) {
 
       const lbl = document.createElement('label');
       lbl.className = 'style-item';
+      lbl.title = `${sty.voiceLabel || sty.voice} — ${sty.desc}`;
       const checked = s.enabledStyles.includes(sty.id) ? 'checked' : '';
-      lbl.innerHTML = `<input type="checkbox" value="${sty.id}" ${checked} /><span>${sty.name}</span>`;
+      lbl.innerHTML = `<input type="checkbox" value="${sty.id}" ${checked} /><span>${sty.name} <small style="color:var(--muted);font-size:11px;">(${(sty.voiceLabel || sty.voice).split(' ')[0]})</small></span>`;
       checks.appendChild(lbl);
     });
   }

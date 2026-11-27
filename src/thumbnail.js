@@ -24,7 +24,7 @@ function buildHtml({ imgDataUri, hookText, title, style, width, height }) {
   const sub = esc(title);
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { width: ${width}px; height: ${height}px; overflow: hidden; background: #0c0d14; font-family: 'Segoe UI', Impact, Arial Black, sans-serif; position: relative; }
+    body { width: ${width}px; height: ${height}px; overflow: hidden; background: #0c0d14; font-family: 'Inter', 'DejaVu Sans', 'Liberation Sans', 'Segoe UI', Impact, 'Arial Black', sans-serif; position: relative; }
     .bg-blur { position: absolute; inset: -30px; background: url('${imgDataUri}') center/cover no-repeat; filter: blur(22px) brightness(0.42) saturate(1.25); }
     .hero { position: absolute; ${isWide ? 'right: 48px; top: 24px; bottom: 24px; width: 410px; border-radius: 26px; border: 6px solid rgba(255,255,255,0.92); box-shadow: 0 24px 70px rgba(0,0,0,0.75);' : 'inset: 0;'} background: url('${imgDataUri}') center 38%/cover no-repeat; }
     .grad { position: absolute; inset: 0; background: ${isWide
