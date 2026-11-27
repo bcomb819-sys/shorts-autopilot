@@ -1,20 +1,28 @@
 {
-  "styleCursor": 3,
-  "styleBag": [],
-  "lastStyleId": "",
+  "styleCursor": 4,
+  "styleBag": [
+    "tall-tale",
+    "deep-dive",
+    "paper-atlas",
+    "stick-story",
+    "night-file"
+  ],
+  "lastStyleId": "inside-out",
   "usedStoryKeys": [
     "io-crack-knuckles",
     "tt-eiffel-twice",
     "ai-43f10aee0cfb",
     "ai-e45da69e1aaf",
     "ai-46ebfb888e7b",
-    "ai-fda656eec1cf"
+    "ai-fda656eec1cf",
+    "ai-b0c768ed1185"
   ],
   "usedTitles": [
     "The Con Man Who Sold the Eiffel Tower Twice",
     "Why Sleeping With Your Phone Is Dangerous",
     "The Bridge That Almost Broke the Wind",
     "The Bridge That Almost Broke Physics",
-    "Why Your Eyes Are Playing Tricks On You"
+    "Why Your Eyes Are Playing Tricks On You",
+    "Why Your Bones Are Screaming Right Now"
   ]
 }
