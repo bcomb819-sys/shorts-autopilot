@@ -1,11 +1,12 @@
 // Shorts Autopilot Local Web Server & API (Node.js 22 native http — zero npm installs required)
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { ALL_STYLES, APP_ROOT, CHROME_BIN, HOST, PORT, PYTHON_BIN } from './config.js';
 import { uploadJobToYouTube } from './pipeline.js';
 import { enqueueRun, isBusy, queueLength, scheduleNext, startScheduler, triggerAutopilotToggle } from './scheduler.js';
-import { addLog, getAccounts, getActiveAccount, getJob, getState, removeAccount, setActiveAccount, todayStats, updateSettings, updateYouTube } from './store.js';
+import { addLog, getAccounts, getActiveAccount, getJob, getState, removeAccount, setActiveAccount, todayStats, updateSettings, updateYouTube, upsertJob } from './store.js';
 import { checkOllamaStatus, offlineBankSummary } from './story-engine.js';
 import { exchangeCode, getAuthUrl, isYouTubeConnected, redirectUri, refreshAccountInfo } from './youtube.js';
 
@@ -256,7 +257,61 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, { ok: true, job });
     }
 
-    // ── Media files for rendered jobs ──
+    // ── API: Mark a rendered job as Manually Uploaded (0 API quota tracker) ──
+    const manualMarkMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/mark-manual$/);
+    if (req.method === 'POST' && manualMarkMatch) {
+      const id = decodeURIComponent(manualMarkMatch[1]);
+      const job = getJob(id);
+      if (!job) return sendJson(res, 404, { error: 'Job not found' });
+      const nextPosted = job.status !== 'manual_posted';
+      const updated = upsertJob({
+        id,
+        status: nextPosted ? 'manual_posted' : 'completed',
+        stage: nextPosted ? 'Manually posted on YouTube Studio (0 API quota)' : 'Ready for manual upload',
+        manualPostedAt: nextPosted ? new Date().toISOString() : null,
+      });
+      addLog('INFO', `${nextPosted ? 'Marked as manually posted' : 'Unmarked manual post'}: "${job.title || id}"`, id);
+      return sendJson(res, 200, { ok: true, job: updated });
+    }
+
+    // ── API: Open rendered Short folder in File Explorer for drag-and-drop to YouTube Studio ──
+    const openFolderMatch = pathname.match(/^\/api\/jobs\/([^/]+)\/open-folder$/);
+    if (req.method === 'POST' && openFolderMatch) {
+      const job = getJob(decodeURIComponent(openFolderMatch[1]));
+      if (!job) return sendJson(res, 404, { error: 'Job not found' });
+      const target = (job.videoPath && fs.existsSync(job.videoPath)) ? job.videoPath : job.projDir;
+      if (!target || !fs.existsSync(target)) return sendJson(res, 404, { error: 'Folder not found on disk' });
+      if (process.platform === 'win32') {
+        spawn('explorer.exe', job.videoPath && fs.existsSync(job.videoPath) ? [`/select,${target}`] : [target], { detached: true, stdio: 'ignore' }).unref();
+      } else if (process.platform === 'darwin') {
+        spawn('open', ['-R', target], { detached: true, stdio: 'ignore' }).unref();
+      } else {
+        spawn('xdg-open', [path.dirname(target)], { detached: true, stdio: 'ignore' }).unref();
+      }
+      return sendJson(res, 200, { ok: true, path: target });
+    }
+
+    // ── Media files & Direct Download for Manual YouTube Studio Upload ──
+    const downloadMatch = pathname.match(/^\/media\/([^/]+)\/(download|download-cover)$/);
+    if (req.method === 'GET' && downloadMatch) {
+      const job = getJob(decodeURIComponent(downloadMatch[1]));
+      if (!job) { res.writeHead(404); res.end('Job not found'); return; }
+      const isCover = downloadMatch[2] === 'download-cover';
+      const target = isCover ? job.coverPath : job.videoPath;
+      if (!target || !fs.existsSync(target)) { res.writeHead(404); res.end('File not found'); return; }
+      const slug = String(job.title || job.id).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || job.id;
+      const fname = isCover ? `${slug}-cover.jpg` : `${slug}-short.mp4`;
+      const stat = fs.statSync(target);
+      res.writeHead(200, {
+        'Content-Type': isCover ? 'image/jpeg' : 'video/mp4',
+        'Content-Length': stat.size,
+        'Content-Disposition': `attachment; filename="${fname}"`,
+        'Cache-Control': 'no-store',
+      });
+      fs.createReadStream(target).pipe(res);
+      return;
+    }
+
     const mediaMatch = pathname.match(/^\/media\/([^/]+)\/(video\.mp4|cover\.jpg|thumbnail\.jpg)$/);
     if (req.method === 'GET' && mediaMatch) {
       const job = getJob(decodeURIComponent(mediaMatch[1]));

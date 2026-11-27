@@ -46,8 +46,17 @@ function render(st) {
   }
 
   // Metrics
-  $('mToday').textContent = `${st.stats.generatedToday} / ${st.stats.postedToday} posted`;
+  $('mToday').textContent = `${st.stats.generatedToday} / ${st.stats.postedToday} API · ${st.stats.manualPostedToday || 0} manual`;
   $('mLimit').textContent = `Daily cap: ${s.dailyLimit} · Queue: ${st.queueLength}`;
+  if ($('manualBadge')) {
+    const mp = st.stats.manualPostedToday || 0;
+    $('manualBadge').textContent = `${mp} / 5 MANUAL TODAY`;
+    $('manualBadge').className = 'badge ' + (mp >= 5 ? 'ok' : 'warn');
+  }
+  if ($('manualReadyHint')) {
+    const rdy = st.stats.manualReadyCount || 0;
+    $('manualReadyHint').textContent = `${rdy} rendered Short${rdy === 1 ? '' : 's'} ready on disk for YouTube Studio drag-and-drop`;
+  }
   $('mCadence').textContent = s.intervalMinutes % 60 === 0
     ? `Every ${s.intervalMinutes / 60}h`
     : `Every ${s.intervalMinutes}m`;
@@ -160,7 +169,7 @@ function render(st) {
     list.innerHTML = '<div class="empty">No Shorts generated yet. Click <strong>Preview Only</strong> or <strong>Generate &amp; Auto-Post</strong> to create your first clip!</div>';
   } else {
     list.innerHTML = st.jobs.map((j) => {
-      const badgeCls = j.status === 'posted' || j.status === 'completed' ? 'ok'
+      const badgeCls = j.status === 'posted' || j.status === 'completed' || j.status === 'manual_posted' ? 'ok'
         : j.status === 'failed' ? 'err' : 'warn';
       const mediaHtml = j.videoPath
         ? `<video src="/media/${j.id}/video.mp4" poster="${j.coverPath ? `/media/${j.id}/cover.jpg` : ''}" controls preload="metadata"></video>`
@@ -170,17 +179,23 @@ function render(st) {
       const ytLink = j.youtubeUrl
         ? `<a class="btn btn-sm btn-green" href="${j.youtubeUrl}" target="_blank">Open YouTube Short ↗</a>`
         : j.videoPath && st.youtube.connected && j.status !== 'uploading'
-          ? `<button class="btn btn-sm btn-primary" onclick="uploadOne('${j.id}')">Upload to YouTube Now</button>`
+          ? `<button class="btn btn-sm btn-primary" onclick="uploadOne('${j.id}')">API Upload Now</button>`
           : '';
-      const coverLink = j.coverPath
-        ? `<a class="btn btn-sm btn-ghost" href="/media/${j.id}/cover.jpg" target="_blank">Cover</a><a class="btn btn-sm btn-ghost" href="/media/${j.id}/thumbnail.jpg" target="_blank">Thumb</a>`
+      const manualKit = j.videoPath
+        ? `<a class="btn btn-sm btn-accent" href="/media/${j.id}/download">⬇ MP4</a>`
+          + (j.coverPath ? `<a class="btn btn-sm btn-ghost" href="/media/${j.id}/download-cover">⬇ Cover</a>` : '')
+          + `<button class="btn btn-sm btn-ghost" onclick="copyJobField('${j.id}','title')">Copy Title</button>`
+          + `<button class="btn btn-sm btn-ghost" onclick="copyJobField('${j.id}','desc')">Copy Desc</button>`
+          + `<button class="btn btn-sm btn-ghost" onclick="copyJobField('${j.id}','tags')">Copy Tags</button>`
+          + `<button class="btn btn-sm btn-ghost" onclick="openJobFolder('${j.id}')">Open Folder</button>`
+          + (!j.youtubeUrl ? `<button class="btn btn-sm ${j.status === 'manual_posted' ? 'btn-green' : 'btn-ghost'}" onclick="markManualPosted('${j.id}')">${j.status === 'manual_posted' ? '✓ Manual Posted' : 'Mark Manual Posted'}</button>` : '')
         : '';
       const tagsText = (j.tags || []).map((t) => `#${t}`).join(' ');
       return `<div class="job-card">
         <div class="job-media">${mediaHtml}</div>
         <div class="job-body">
           <div class="job-meta">
-            <span class="badge ${badgeCls}">${(j.status || '').toUpperCase()}</span>
+            <span class="badge ${badgeCls}">${(j.status || '').replace('_', ' ').toUpperCase()}</span>
             <span>${j.styleName || j.style}</span>
             ${j.generatedBy ? `<span>· ${j.generatedBy}</span>` : ''}
             ${j.durationSec ? `<span>· ${j.durationSec.toFixed(1)}s · ${j.sizeMb} MB</span>` : ''}
@@ -189,7 +204,7 @@ function render(st) {
           <div class="hint">${j.stage || ''}${j.error ? ` — <span style="color:var(--red)">${j.error}</span>` : ''}</div>
           ${j.description ? `<div class="job-desc">${j.description}</div>` : ''}
           ${tagsText ? `<div class="job-tags">${tagsText}</div>` : ''}
-          <div class="job-actions">${ytLink}${coverLink}</div>
+          <div class="job-actions">${manualKit}${ytLink}</div>
         </div>
       </div>`;
     }).join('');
@@ -363,6 +378,64 @@ window.removeAccount = async (id) => {
   try {
     await api(`/api/youtube/accounts/${encodeURIComponent(id)}`, { method: 'DELETE' });
     toast('YouTube account removed.');
+    refresh();
+  } catch (err) { toast('Error: ' + err.message); }
+};
+
+$('manual1Btn').onclick = async () => {
+  try {
+    await api('/api/jobs/run', { method: 'POST', body: { style: $('runStyle').value || null, upload: false } });
+    toast('Generating 1 Full HD Short for manual upload (0 API quota)!');
+    refresh();
+  } catch (err) { toast('Error: ' + err.message); }
+};
+
+$('manual5Btn').onclick = async () => {
+  try {
+    await api('/api/jobs/batch', { method: 'POST', body: { count: 5, upload: false } });
+    toast('Queued 5 unique Shorts for manual upload (0 API quota)! They will appear on the right as each finishes.');
+    refresh();
+  } catch (err) { toast('Error: ' + err.message); }
+};
+
+$('openStudioBtn').onclick = () => {
+  const chId = latestState?.youtube?.channelId;
+  const url = chId
+    ? `https://studio.youtube.com/channel/${encodeURIComponent(chId)}/videos/upload?d=ud`
+    : 'https://studio.youtube.com/';
+  window.open(url, '_blank');
+};
+
+window.copyJobField = async (id, field) => {
+  const j = (latestState?.jobs || []).find((x) => x.id === id);
+  if (!j) return;
+  let text = '';
+  if (field === 'title') {
+    const base = String(j.title || '').replace(/\s*#shorts\b/gi, '').trim().slice(0, 90);
+    text = `${base} #Shorts`;
+  } else if (field === 'desc') {
+    const d = String(j.description || j.title || '').trim();
+    text = /#shorts\b/i.test(d) ? d : `${d}\n\n#Shorts`;
+  } else if (field === 'tags') {
+    text = [...new Set(['shorts', 'youtubeshorts', ...(j.tags || [])])].join(', ');
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(`Copied ${field.toUpperCase()}! Ready to paste in YouTube Studio.`);
+  } catch (err) { toast('Copy failed: ' + err.message); }
+};
+
+window.openJobFolder = async (id) => {
+  try {
+    await api(`/api/jobs/${encodeURIComponent(id)}/open-folder`, { method: 'POST' });
+    toast('Opened folder in File Explorer — drag the MP4 into YouTube Studio!');
+  } catch (err) { toast('Error: ' + err.message); }
+};
+
+window.markManualPosted = async (id) => {
+  try {
+    await api(`/api/jobs/${encodeURIComponent(id)}/mark-manual`, { method: 'POST' });
+    toast('Updated manual post status!');
     refresh();
   } catch (err) { toast('Error: ' + err.message); }
 };

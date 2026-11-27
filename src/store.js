@@ -280,11 +280,15 @@ export function todayStats() {
   const today = new Date().toISOString().slice(0, 10);
   const todaysJobs = state.jobs.filter((j) => (j.createdAt || '').startsWith(today));
   const postedToday = state.jobs.filter((j) => j.youtubeId && (j.postedAt || j.updatedAt || '').startsWith(today));
-  const quotaUnitsUsed = postedToday.length * 1650;
+  const manualPostedToday = state.jobs.filter((j) => j.status === 'manual_posted' && (j.manualPostedAt || j.updatedAt || '').startsWith(today));
+  const manualReadyToday = state.jobs.filter((j) => j.videoPath && !j.youtubeId && j.status !== 'manual_posted');
+  const quotaUnitsUsed = postedToday.length * 1660;
   return {
     date: today,
     generatedToday: todaysJobs.length,
     postedToday: postedToday.length,
+    manualPostedToday: manualPostedToday.length,
+    manualReadyCount: manualReadyToday.length,
     dailyLimit: state.settings.dailyLimit,
     quotaUnitsUsed,
     defaultQuotaUnits: 10000,
