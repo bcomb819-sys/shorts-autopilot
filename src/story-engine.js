@@ -181,27 +181,30 @@ function buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt = 1) {
   const angles = schema.angles || ['unusual world history', 'human body surprise', 'clever real-world loophole'];
   const randomAngle = angles[Math.floor(Math.random() * angles.length)];
 
-  return `You are a viral YouTube Shorts scriptwriter. Create ONE 100% BRAND-NEW, NEVER-BEFORE-USED 35-second Short in style "${styleId}".
+  return `You are a top 0.1% viral YouTube Shorts scriptwriter (Zack D. Films / Kurzgesagt pacing) engineered for 95%+ retention and seamless looping.
+Create ONE 100% BRAND-NEW, NEVER-BEFORE-USED 25-to-33-second Short in style "${styleId}".
 Style guidance: ${schema.guidance}
 Specific angle for this Short (seed #${attempt}-${Date.now() % 997}): ${randomAngle}.
 Channel theme context: ${nicheTopics || randomAngle}.
 STRICT UNIQUENESS RULE: Do NOT repeat, rephrase, or overlap ANY of these already-used stories:
 ${recentUsed || '(none yet)'}
 
-Rules:
-- Hook the viewer in the FIRST 2 SECONDS (line 0 must be under 11 words and shocking/curious).
-- Write all numbers in "text" as spoken English words (e.g., "nineteen ninety five", "five thousand") for TTS.
-- Keep each line 1 natural clause (8-15 words), 6-9 lines total (~95-110 words).
-- Return ONLY raw valid JSON (no markdown fences):
+VIRAL RETENTION RULES (MUST FOLLOW EVERY SINGLE ONE):
+1. INSTANT 0-2s HOOK (line 0): Maximum 9 spoken words! Start directly inside tension, a bizarre fact, or a "you" question that opens an irresistible curiosity loop. NEVER start with "Did you know", "Have you ever wondered", "Today we", or "In this video".
+2. FAST MICRO-BEATS (7-9 short lines, 75-95 words total): Every line is 1 punchy visual beat (7-11 words) so the scene cuts every 2.5 to 3.5 seconds — zero rambling, zero filler!
+3. MID-VIDEO RE-HOOK / TWIST (line 3 or 4): Drop a sharp pattern-interrupt turn ("But here is the crazy part...", "Until one tiny mistake ruined everything...", "And what happens next is wild...") right at the midpoint to stop viewers from swiping away.
+4. PAYOFF + SEAMLESS LOOP ENDING (last line): Deliver the shocking payoff or twist cleanly on the last line so the end feels tight and loops smoothly back into line 0. NEVER add "like and subscribe", "follow for more", or "thanks for watching".
+5. Write all numbers in "text" as spoken English words (e.g., "nineteen ninety five", "five thousand") for clean TTS.
+6. Return ONLY raw valid JSON (no markdown fences):
 {
-  "title": "Eye-catching viral Shorts title under 60 chars",
-  "hookText": "2-3 WORD COVER HOOK",
-  "description": "2-sentence viral description ending with #shorts",
+  "title": "Curiosity-gap viral Shorts title under 55 chars (no clickbait spam)",
+  "hookText": "2-3 WORD BOLD HOOK",
+  "description": "2-sentence curiosity description ending with #shorts",
   "tags": ["shorts", "tag2", "tag3", "tag4", "tag5", "tag6"],
   "sources": ["Reliable source name"],
   "lines": [
     {
-      "text": "Spoken narration line with numbers spelled out",
+      "text": "Spoken narration beat (7-11 words, numbers spelled out)",
       "scene": "one of: ${schema.scenes.join(' | ')}",
       "mood": "one of: ${schema.moods.join(' | ')}",
       "badge": "OPTIONAL 1-2 WORD OVERLAY",

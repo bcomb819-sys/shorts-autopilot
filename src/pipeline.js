@@ -138,14 +138,14 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
     const rawVideoPath = path.join(projDir, 'renders', 'video.mp4');
     let videoPath = rawVideoPath;
 
-    // 8b. Enforce strict YouTube Shorts compliance (1080x1920 9:16, <= 59s, high-bitrate H.264) + 0.20s vertical cover frame at 0:00
+    // 8b. Enforce strict YouTube Shorts compliance (1080x1920 9:16, <= 59s, high-bitrate H.264) + 1-frame (0.04s) cover anchor at 0:00 (instant motion, zero swipe-away lag!)
     if (st.settings.bakeVerticalCover !== false && fs.existsSync(coverPath)) {
       const coveredPath = path.join(projDir, 'renders', 'short.mp4');
       try {
         await runCmd('ffmpeg', [
           '-y', '-v', 'error',
-          '-loop', '1', '-t', '0.20', '-framerate', String(cloudEnv.FPS), '-i', coverPath,
-          '-f', 'lavfi', '-t', '0.20', '-i', 'anullsrc=r=48000:cl=stereo',
+          '-loop', '1', '-t', '0.04', '-framerate', String(cloudEnv.FPS), '-i', coverPath,
+          '-f', 'lavfi', '-t', '0.04', '-i', 'anullsrc=r=48000:cl=stereo',
           '-i', rawVideoPath,
           '-filter_complex',
           '[0:v]scale=1080:1920:flags=lanczos,setsar=1,format=yuv420p[cv];[2:v]scale=1080:1920:flags=lanczos,setsar=1,format=yuv420p[mv];[cv][1:a][mv][2:a]concat=n=2:v=1:a=1[v][a]',

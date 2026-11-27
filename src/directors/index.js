@@ -9,18 +9,57 @@ export function buildScriptJson(story) {
     title: story.title,
     voice: story.voice || meta.voice,
     speed: story.speed || meta.speed,
-    lead: 0.25,
-    outro: 0.9,
-    gap: story.style === 'night-file' ? 0.34 : 0.18,
+    // Snappy viral Shorts pacing: instant 0.06s start, tight inter-line cuts, minimal 0.18s outro for seamless looping!
+    lead: 0.06,
+    outro: 0.18,
+    gap: story.style === 'night-file' ? 0.14 : 0.09,
     music: story.music || meta.music,
     sources: story.sources || [],
     lines: story.lines.map((ln, idx) => {
       const obj = { text: ln.text };
       if (ln.caps) obj.caps = ln.caps;
-      if (idx === story.lines.length - 1) obj.gap = 0.35;
+      if (idx === story.lines.length - 1) obj.gap = 0.08;
       return obj;
     }),
   };
+}
+
+// Shared Retention HUD injected into every style:
+// 1) Sleek glowing top progress bar (0..100%) keeps viewers watching to completion
+// 2) Instant 0..2.4s bold kinetic Hook Banner stops scroll-past in the first 0.5 seconds
+function retentionHudSnippet(hookText, accent = '#FFD43B') {
+  return `const HOOK_TEXT = ${JSON.stringify(String(hookText || '').toUpperCase().slice(0, 26))};
+function drawRetentionHud(t) {
+  const dur = Math.max(1, T.dur || 30);
+  const pct = clamp(t / dur, 0, 1);
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // 1. Sleek top retention progress bar
+  ctx.fillStyle = 'rgba(0,0,0,0.42)';
+  ctx.fillRect(0, 0, 1080, 12);
+  ctx.fillStyle = ${JSON.stringify(accent)};
+  ctx.fillRect(0, 0, Math.round(1080 * pct), 12);
+  // 2. Instant 0..2.4s scroll-stopper hook pill
+  if (HOOK_TEXT && t < 2.55) {
+    const enter = eob(clamp(t / 0.16, 0, 1));
+    const exit = t > 2.15 ? 1 - clamp((t - 2.15) / 0.4, 0, 1) : 1;
+    const sc = lerp(0.82, 1.0, enter);
+    ctx.globalAlpha = exit;
+    ctx.translate(540, 138);
+    ctx.scale(sc, sc);
+    let fs = 54;
+    ctx.font = '900 ' + fs + 'px Inter, sans-serif';
+    while (ctx.measureText(HOOK_TEXT).width > 820 && fs > 30) { fs -= 2; ctx.font = '900 ' + fs + 'px Inter, sans-serif'; }
+    const tw = ctx.measureText(HOOK_TEXT).width;
+    const pw = tw + 74, ph = fs + 42;
+    ctx.fillStyle = 'rgba(10,12,20,0.88)';
+    ctx.beginPath(); ctx.roundRect(-pw / 2, -ph / 2, pw, ph, ph / 2); ctx.fill();
+    ctx.lineWidth = 5; ctx.strokeStyle = ${JSON.stringify(accent)}; ctx.stroke();
+    ctx.fillStyle = '#FFFFFF'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(HOOK_TEXT, 0, 3);
+  }
+  ctx.restore();
+}`;
 }
 
 function compileTallTale(story) {
@@ -28,7 +67,7 @@ function compileTallTale(story) {
   return `// Auto-generated Tall Tale 3D shots for: ${JSON.stringify(story.title)}
 import * as THREE from 'three';
 import { ctx, clamp, lerp, seg, eo, eio, eob } from './core/lib.js';
-import { L } from './core/timing.js';
+import { T, L } from './core/timing.js';
 import { camera } from './core/engine.js';
 import * as WD from './core/world.js';
 import * as PR from './core/props.js';
@@ -39,6 +78,7 @@ const mix = (a, b, k) => a.clone().lerp(b, k);
 const talk = (t, on = 1) => (on ? 0.25 + 0.75 * Math.abs(Math.sin(t * 13)) * (0.6 + 0.4 * Math.sin(t * 5.3)) : 0);
 const blink = (t, off = 0) => (((t + off) % 3.2) < 0.12 ? 1 : 0);
 const LINES = ${data};
+${retentionHudSnippet(story.hookText, '#F2C230')}
 
 const LOOK = {
   hero: { body: '#E8734A', hat: 'cap', hatCol: '#2E5A44', band: '#F2C230', neck: 'scarf', neckCol: '#F2C230', extra: ['glasses'] },
@@ -156,6 +196,7 @@ export function buildShots(E) {
         }
         blit();
         drawBadge(pop, ln.badge, ln.badgeSub, ln.badgeColor);
+        drawRetentionHud(t);
       },
     });
     if (i > 0) cue(st, 'whoosh', { gain: 0.7 });
@@ -170,8 +211,8 @@ function compileDeepDive(story) {
   const data = JSON.stringify(story.lines);
   return `// Auto-generated Deep Dive 3D shots for: ${JSON.stringify(story.title)}
 import * as THREE from 'three';
-import { clamp, lerp, seg, eo, eio, eob } from './core/lib.js';
-import { L } from './core/timing.js';
+import { ctx, clamp, lerp, seg, eo, eio, eob } from './core/lib.js';
+import { T, L } from './core/timing.js';
 import { camera } from './core/engine.js';
 import { Human } from './core/human.js';
 import * as SETS from './core/sets.js';
@@ -180,6 +221,7 @@ import { pill, warning, blackout } from './core/look2d.js';
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 const lerpV = (a, b, k) => a.clone().lerp(b, k);
 const LINES = ${data};
+${retentionHudSnippet(story.hookText, '#4FD1E8')}
 
 export function buildShots(E) {
   const S = [], CUES = [], add = (o) => (S.push(o), o), cue = (t, type, o = {}) => CUES.push({ t: +t.toFixed(3), type, ...o });
@@ -260,6 +302,7 @@ export function buildShots(E) {
           if (sc === 'kitchen_end') warning(540, 340, eob(seg(lt, 0.15, 0.4)) * 0.85);
           else if (ln.pill) pill(ln.pill, 540, 320, eob(seg(lt, 0.12, 0.38)), ln.pillColor || '#FFD43B');
         }
+        drawRetentionHud(t);
       },
     });
     if (i > 0) cue(st, 'whoosh');
@@ -274,8 +317,8 @@ function compileNightFile(story) {
   const data = JSON.stringify(story.lines);
   return `// Auto-generated Night File 3D shots for: ${JSON.stringify(story.title)}
 import * as THREE from 'three';
-import { ctx, setCtx, clamp, lerp, seg, eo, eio } from './core/lib.js';
-import { L } from './core/timing.js';
+import { ctx, setCtx, clamp, lerp, seg, eo, eio, eob } from './core/lib.js';
+import { T, L } from './core/timing.js';
 import { camera } from './core/engine.js';
 import { Human } from './core/human.js';
 import * as SETS from './core/sets3d.js';
@@ -284,6 +327,7 @@ import * as K from './core/kit.js';
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z), lerpV = (a, b, k) => a.clone().lerp(b, k);
 const NIGHT = { exposure: 1.25, bloom: 0.85, bloomThreshold: 0.55, vignette: 0.6, grain: 0.05, warm: 0 };
 const LINES = ${data};
+${retentionHudSnippet(story.hookText, '#E4322B')}
 
 export function buildShots(E) {
   const S = [], CUES = [], add = (o) => (S.push(o), o), cue = (t, type, o = {}) => CUES.push({ t: +t.toFixed(3), type, ...o });
@@ -340,6 +384,7 @@ export function buildShots(E) {
           render(C.scene, V3(0, 1, -5)); blit();
           if (ln.date1) K.dateStamp(ln.date1, ln.date2 || '', clamp(lt / 1.3), 80, 300);
         }
+        drawRetentionHud(t);
       },
     });
     if (i > 0) cue(st, 'whoosh', { gain: 0.5 });
@@ -354,10 +399,11 @@ function compileInsideOut(story) {
   const data = JSON.stringify(story.lines);
   return `// Auto-generated Inside Out 2D shots for: ${JSON.stringify(story.title)}
 import { ctx, C, W, H, clamp, lerp, seg, eo, eio, eob, rnd } from './core/lib.js';
-import { L } from './core/timing.js';
+import { T, L } from './core/timing.js';
 import * as K from './core/kit.js';
 
 const LINES = ${data};
+${retentionHudSnippet(story.hookText, '#FFD43B')}
 
 export function buildShots() {
   const S = [], CUES = [], add = (o) => (S.push(o), o), cue = (t, type, o = {}) => CUES.push({ t: +t.toFixed(3), type, ...o });
@@ -427,6 +473,7 @@ export function buildShots() {
           K.man({ x: 540, y: 1180, s: 1.6, arm: K.ARM.wave, mouth: shocked ? 'o' : 'smile', eyes: shocked ? 'wide' : 'n', brow: shocked ? 1 : 0 });
           if (shocked) K.shockLines(540, 625, 290, clamp((lt - d * 0.45) * 4));
         }
+        drawRetentionHud(t);
       },
     });
     if (i > 0) cue(st, 'whoosh');
@@ -441,10 +488,11 @@ function compileStickStory(story) {
   const data = JSON.stringify(story.lines);
   return `// Auto-generated Stick Story 2D shots for: ${JSON.stringify(story.title)}
 import { ctx, W, H, clamp, lerp, seg, eo, eio, eob } from './core/lib.js';
-import { L } from './core/timing.js';
+import { T, L } from './core/timing.js';
 import * as K from './core/kit.js';
 const { P, GROUND } = K;
 const LINES = ${data};
+${retentionHudSnippet(story.hookText, '#4CD97B')}
 
 export function buildShots() {
   const S = [], CUES = [], add = (o) => (S.push(o), o), cue = (t, type, o = {}) => CUES.push({ t: +t.toFixed(3), type, ...o });
@@ -486,6 +534,7 @@ export function buildShots() {
           if (ln.cross && lt > 0.35) K.cross(790, 820, eob(seg(lt, 0.35, 0.6)));
           if (ln.check && lt > 0.35) K.check(790, 820, eob(seg(lt, 0.35, 0.6)));
         }
+        drawRetentionHud(t);
       },
     });
     if (i > 0) cue(st, 'whoosh');
@@ -500,10 +549,11 @@ function compilePaperAtlas(story) {
   const data = JSON.stringify(story.lines);
   return `// Auto-generated Paper Atlas 2D shots for: ${JSON.stringify(story.title)}
 import { ctx, W, H, TAU, clamp, lerp, seg, eo, eio, eob, rnd, circle } from './core/lib.js';
-import { L } from './core/timing.js';
+import { T, L } from './core/timing.js';
 import * as K from './core/kit.js';
 const { P, cut, P_rr } = K;
 const LINES = ${data};
+${retentionHudSnippet(story.hookText, '#E6B84A')}
 
 function nightPage(seed) {
   K.parchment(seed); ctx.save(); ctx.globalAlpha = 0.84; ctx.fillStyle = '#2F3550';
@@ -552,6 +602,7 @@ export function buildShots() {
           K.figure({ x: 540, y: 1420, h: 640, role: ln.role || 'worker', arm: 30 + Math.sin(lt * 7) * 16 });
           if (ln.slip) K.slip(ln.slip, 540, 360, eob(seg(lt, 0.12, 0.4)), 0.02);
         }
+        drawRetentionHud(t);
       },
     });
     if (i > 0) cue(st, 'whoosh');
