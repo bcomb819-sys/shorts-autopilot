@@ -1,0 +1,12 @@
+{
+  "name": "shorts-autopilot",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Automated 24/7 Faceless YouTube Shorts generator & publisher across all 6 styles with local Ollama, Kokoro TTS, Whisper, and YouTube Data API v3",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

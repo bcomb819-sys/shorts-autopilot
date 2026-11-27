@@ -1,0 +1,16 @@
+services:
+  shorts-autopilot:
+    build: .
+    container_name: shorts-autopilot
+    restart: always
+    ports:
+      - "3456:3456"
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=3456
+      - SOFTWARE_GL=1
+    volumes:
+      - ./data:/app/data
+      - ./renders:/root/faceless-shorts/_autopilot

@@ -1,0 +1,7 @@
+.env
+data/db.json
+data/*.tmp
+.faceless-shorts/
+renders/
+node_modules/
+*.log

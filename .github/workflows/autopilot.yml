@@ -1,0 +1,90 @@
+name: Shorts Autopilot 24/7 Cloud Poster
+
+# Runs every 2 hours in GitHub's cloud — even when your laptop is completely turned OFF!
+# Setup:
+# 1. Push this folder (including vendor/faceless-shorts) to a GitHub repo.
+# 2. In GitHub Repo -> Settings -> Secrets and variables -> Actions, add:
+#      YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN, GEMINI_API_KEY
+# 3. Enable Actions -> workflow runs automatically every 2 hours and commits data/db.json
+#    so NO story is ever repeated!
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # Every 2 hours (12 Shorts/day). Change to '0 */4 * * *' for free 6/day YouTube quota.
+  workflow_dispatch:
+    inputs:
+      style:
+        description: 'Optional style override (blank = auto-rotate all 6)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  generate-and-post:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+      YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+      YT_REFRESH_TOKEN: ${{ secrets.YT_REFRESH_TOKEN }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      SKILL_DIR: ${{ github.workspace }}/vendor/faceless-shorts
+      FACELESS_HOME: ${{ github.workspace }}/.faceless-shorts
+      CHROME: /usr/bin/chromium-browser
+      SOFTWARE_GL: '1'
+      QS: '&res=0.65&aa=0&shadow=1024'
+      FPS: '24'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install FFmpeg & Chromium
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg chromium-browser
+
+      - name: Cache Kokoro & Whisper models + Python venv
+        uses: actions/cache@v4
+        with:
+          path: |
+            .faceless-shorts
+            ~/.cache/huggingface
+          key: faceless-models-v1-${{ runner.os }}
+
+      - name: Ensure Python packages & models
+        run: |
+          if [ ! -x ".faceless-shorts/venv/bin/python" ]; then
+            python3 -m venv .faceless-shorts/venv
+            .faceless-shorts/venv/bin/pip install -q numpy scipy kokoro-onnx faster-whisper
+          fi
+          .faceless-shorts/venv/bin/python vendor/faceless-shorts/scripts/voice.py --download
+          .faceless-shorts/venv/bin/python -c "from faster_whisper import WhisperModel; WhisperModel('small.en', device='cpu', compute_type='int8')"
+
+      - name: Generate 100% unique Short & auto-post to YouTube
+        run: |
+          if [ -n "${{ github.event.inputs.style }}" ]; then
+            node src/run-once.js --style=${{ github.event.inputs.style }}
+          else
+            node src/run-once.js
+          fi
+
+      - name: Save used-stories history so NO story ever repeats
+        run: |
+          git config user.name "Shorts Autopilot Bot"
+          git config user.email "autopilot@users.noreply.github.com"
+          git add data/history.json
+          git diff --cached --quiet || git commit -m "autopilot: record published unique story [skip ci]"
+          git push

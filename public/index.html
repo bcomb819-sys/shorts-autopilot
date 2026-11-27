@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Shorts Autopilot — 24/7 Faceless YouTube Shorts Engine</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">▶</div>
+      <div>
+        <h1>Shorts Autopilot</h1>
+        <p class="sub">100% Local AI · All 6 Styles · Hands-Free YouTube Publishing</p>
+      </div>
+    </div>
+    <div class="top-controls">
+      <div class="countdown" id="countdownBox">Autopilot paused</div>
+      <button id="autopilotBtn" class="btn btn-primary btn-lg">Start Autopilot</button>
+    </div>
+  </header>
+
+  <section class="metrics" id="metricsRow">
+    <div class="metric-card">
+      <span class="label">Generated / Posted Today</span>
+      <strong id="mToday">0 / 0</strong>
+      <small id="mLimit">Daily cap: 12</small>
+    </div>
+    <div class="metric-card">
+      <span class="label">Posting Cadence</span>
+      <strong id="mCadence">Every 2h</strong>
+      <small id="mApproval">No approval required</small>
+    </div>
+    <div class="metric-card">
+      <span class="label">YouTube API Status</span>
+      <strong id="mYt">Not Connected</strong>
+      <small id="mQuota">0 / 10,000 free units today</small>
+    </div>
+    <div class="metric-card">
+      <span class="label">Local Story Engine</span>
+      <strong id="mOllama">Checking...</strong>
+      <small id="mBank">Offline bank: 24/24 unused</small>
+    </div>
+  </section>
+
+  <main class="layout">
+    <section class="col-left">
+      <!-- Quick Run -->
+      <div class="card">
+        <div class="card-head">
+          <h2>Instant Generator</h2>
+          <span class="badge" id="busyBadge">IDLE</span>
+        </div>
+        <div class="row">
+          <select id="runStyle">
+            <option value="">Auto-Rotate (All Enabled Styles)</option>
+          </select>
+          <button id="runNowBtn" class="btn btn-accent">Generate &amp; Auto-Post</button>
+          <button id="previewBtn" class="btn btn-ghost">Preview Only</button>
+        </div>
+        <div class="row row-tight">
+          <button id="batch3Btn" class="btn btn-sm btn-ghost">Queue 3 Immediate</button>
+          <button id="sched6Btn" class="btn btn-sm btn-green">Schedule 6 on YouTube (Every 2h · Works Laptop Off)</button>
+        </div>
+      </div>
+
+      <!-- Schedule & Style Controls -->
+      <div class="card">
+        <div class="card-head">
+          <h2>Autopilot Schedule &amp; Styles</h2>
+          <button id="saveSettingsBtn" class="btn btn-sm btn-primary">Save Settings</button>
+        </div>
+
+        <div class="presets">
+          <button class="chip" data-interval="120" data-limit="12">Every 2 Hours (12/day)</button>
+          <button class="chip" data-interval="72" data-limit="20">20 / Day (Every 72m)</button>
+          <button class="chip" data-interval="240" data-limit="6">Quota-Safe (6/day · 4h)</button>
+        </div>
+
+        <div class="grid-2">
+          <label>Interval (minutes)
+            <input type="number" id="intervalMinutes" min="10" max="1440" value="120" />
+          </label>
+          <label>Daily Video Cap
+            <input type="number" id="dailyLimit" min="1" max="50" value="12" />
+          </label>
+          <label>YouTube Visibility
+            <select id="privacyStatus">
+              <option value="public">Public (Live Immediately)</option>
+              <option value="unlisted">Unlisted</option>
+              <option value="private">Private</option>
+            </select>
+          </label>
+          <label>Render Quality
+            <select id="draftMode">
+              <option value="false">Full 1080×1920 Quality</option>
+              <option value="true">Fast Draft Mode</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="toggles">
+          <label class="toggle"><input type="checkbox" id="autoPost" checked /> <span>Auto-post immediately to YouTube Shorts (zero approval required)</span></label>
+          <label class="toggle"><input type="checkbox" id="uploadThumbnail" /> <span>Upload 16:9 API thumbnail <em>(keep OFF for Shorts-only tab; vertical cover is baked into frame 1)</em></span></label>
+        </div>
+
+        <div class="styles-box">
+          <span class="label">Enabled Styles (rotates automatically)</span>
+          <div id="styleChecks" class="style-grid"></div>
+        </div>
+      </div>
+
+      <!-- YouTube Accounts Manager (Multi-Account + One-Time OAuth) -->
+      <div class="card">
+        <div class="card-head">
+          <h2>YouTube Accounts Manager</h2>
+          <span class="badge" id="ytBadge">DISCONNECTED</span>
+        </div>
+        <p class="hint">Add and manage your YouTube channels. The <strong>Active</strong> channel receives all automated Shorts with zero approval prompts.</p>
+
+        <div id="accountsList" class="accounts-list"></div>
+
+        <div class="row">
+          <button id="addAccountBtn" class="btn btn-primary">+ Add YouTube Account</button>
+          <button id="toggleCredsBtn" class="btn btn-ghost btn-sm">OAuth Credentials</button>
+        </div>
+
+        <div id="credsPanel" class="creds-panel">
+          <div class="grid-2">
+            <label>Google OAuth Client ID
+              <input type="text" id="ytClientId" placeholder="xxxx.apps.googleusercontent.com" />
+            </label>
+            <label>Google OAuth Client Secret
+              <input type="password" id="ytClientSecret" placeholder="GOCSPX-..." />
+            </label>
+          </div>
+          <div class="uri-box">
+            <span>Authorized Redirect URI:</span>
+            <code id="redirectUriText">http://127.0.0.1:3456/api/youtube/callback</code>
+          </div>
+          <div class="row">
+            <button id="saveCredsBtn" class="btn btn-sm btn-accent">Save OAuth Credentials</button>
+          </div>
+        </div>
+
+        <details class="guide">
+          <summary>How to get free YouTube OAuth credentials &amp; enable YouTube Data API v3</summary>
+          <ol>
+            <li>Open <strong>console.cloud.google.com</strong> → Create/select a project → Enable <strong>YouTube Data API v3</strong>.</li>
+            <li>Go to <strong>OAuth consent screen / Audience</strong> → add your Gmail(s) under <strong>Test users</strong>.</li>
+            <li>Go to <strong>Credentials → Create OAuth Client ID</strong> (Web application) with Redirect URI: <code>http://127.0.0.1:3456/api/youtube/callback</code>.</li>
+            <li>Paste the Client ID &amp; Secret above, click <strong>Save OAuth Credentials</strong>, then click <strong>+ Add YouTube Account</strong>.</li>
+          </ol>
+        </details>
+      </div>
+
+      <!-- Strict Unique Story Engine (Ollama + Free Cloud Gemini + Offline Bank) -->
+      <div class="card">
+        <div class="card-head">
+          <h2>Zero-Repeat Story Engine ($0)</h2>
+          <span class="badge" id="ollamaBadge">CHECKING</span>
+        </div>
+        <p class="hint">Strict zero-repeat mode is ON: every generated title and topic is permanently retired and never recycled.</p>
+        <div class="grid-2">
+          <label>Ollama URL (Local)
+            <input type="text" id="ollamaUrl" value="http://127.0.0.1:11434" />
+          </label>
+          <label>Ollama Model
+            <input type="text" id="ollamaModel" value="llama3.2" list="ollamaModelsList" />
+            <datalist id="ollamaModelsList"></datalist>
+          </label>
+          <label>Free Gemini API Key (Cloud / Unlimited)
+            <input type="password" id="geminiApiKey" placeholder="AIza... (optional, free at aistudio.google.com)" />
+          </label>
+          <label>Gemini Model
+            <input type="text" id="geminiModel" value="gemini-2.5-flash" />
+          </label>
+        </div>
+        <label>Story Source Priority
+          <select id="storySource">
+            <option value="auto">Auto: Local Ollama → Free Gemini API → Unused 24-Story Bank</option>
+            <option value="ollama">Local Ollama Only</option>
+            <option value="gemini">Free Gemini API Only (Best for 24/7 Cloud)</option>
+            <option value="bank">Verified 24-Story Offline Bank Only (No Repeat)</option>
+          </select>
+        </label>
+        <label>Niche &amp; Topic Focus
+          <textarea id="nicheTopics" rows="2"></textarea>
+        </label>
+      </div>
+
+      <!-- 24/7 Cloud Backend (Runs Even When Laptop is Off) -->
+      <div class="card">
+        <div class="card-head">
+          <h2>Run 24/7 While Laptop Is OFF</h2>
+          <span class="badge ok">CLOUD READY</span>
+        </div>
+        <p class="hint">No code can run on a powered-off laptop—use either <strong>YouTube Scheduled Batch</strong> above, <strong>GitHub Actions (free cloud cron every 2h)</strong>, or <strong>Docker on a Cloud VPS</strong>.</p>
+        <div class="row">
+          <button id="copyEnvBtn" class="btn btn-sm btn-primary">Copy Cloud .env / GitHub Secrets</button>
+        </div>
+        <details class="guide">
+          <summary>24/7 Cloud Deployment Steps (GitHub Actions or Docker VPS)</summary>
+          <ol>
+            <li>Connect YouTube once above &amp; paste a free <strong>Gemini API Key</strong> so infinite unique stories run in the cloud.</li>
+            <li>Click <strong>Copy Cloud .env / GitHub Secrets</strong>.</li>
+            <li><strong>Option A (Free GitHub Actions):</strong> Push this folder to GitHub → Settings → Secrets → Actions → add <code>YT_CLIENT_ID</code>, <code>YT_CLIENT_SECRET</code>, <code>YT_REFRESH_TOKEN</code>, <code>GEMINI_API_KEY</code>. The included <code>.github/workflows/autopilot.yml</code> posts 1 unique Short every 2 hours even when your laptop is off!</li>
+            <li><strong>Option B (24/7 Cloud VPS / Oracle Free / Railway):</strong> Paste secrets into <code>.env</code> and run <code>docker compose up -d</code> to keep this entire dashboard &amp; scheduler online 24/7.</li>
+          </ol>
+        </details>
+      </div>
+    </section>
+
+    <section class="col-right">
+      <div class="card">
+        <div class="card-head">
+          <h2>Generated Shorts &amp; Auto-Upload History</h2>
+          <span class="hint" id="queueInfo">Queue: 0</span>
+        </div>
+        <div id="jobsList" class="jobs-list">
+          <div class="empty">No Shorts generated yet. Click <strong>Preview Only</strong> or <strong>Generate &amp; Auto-Post</strong> to create your first clip!</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Live Engine Logs</h2>
+        </div>
+        <div id="logsBox" class="logs-box"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
