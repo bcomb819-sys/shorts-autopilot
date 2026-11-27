@@ -1,16 +1,19 @@
 name: Shorts Autopilot 24/7 Cloud Poster
 
-# Runs every 2 hours in GitHub's cloud — even when your laptop is completely turned OFF!
+# Runs 5 times/day at global peak hours in GitHub's cloud — even when your laptop is completely turned OFF!
 # Setup:
 # 1. Push this folder (including vendor/faceless-shorts) to a GitHub repo.
 # 2. In GitHub Repo -> Settings -> Secrets and variables -> Actions, add:
 #      YT_CLIENT_ID, YT_CLIENT_SECRET, YT_REFRESH_TOKEN, GEMINI_API_KEY
-# 3. Enable Actions -> workflow runs automatically every 2 hours and commits data/db.json
+# 3. Enable Actions -> workflow runs automatically 5x/day and commits data/history.json
 #    so NO story is ever repeated!
 
 on:
   schedule:
-    - cron: '0 */2 * * *'   # Every 2 hours (12 Shorts/day). Change to '0 */4 * * *' for free 6/day YouTube quota.
+    # 5 Shorts/day at global peak viewing windows (UTC, offset :15 to avoid GitHub top-of-hour queue delays):
+    # 05:15 UTC (India/Asia/Australia) | 11:15 UTC (UK/Europe/India) | 15:15 UTC (India Eve/UK/US East AM)
+    # 19:15 UTC (US East PM/UK Eve/US West) | 23:15 UTC (US Prime Eve/Australia AM)
+    - cron: '15 5,11,15,19,23 * * *'
   workflow_dispatch:
     inputs:
       style:
