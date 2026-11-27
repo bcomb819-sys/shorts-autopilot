@@ -1,4 +1,4 @@
-// Frame-exact capture through headless Chrome. No npm packages (Node 22+). Run from the project folder.
+﻿// Frame-exact capture through headless Chrome. No npm packages (Node 22+). Run from the project folder.
 //   node tools/capture.mjs check                         boot, list shots + captions, report errors
 //   node tools/capture.mjs cues                          write data/cues.json (the sound cues, for tools/mix.py)
 //   node tools/capture.mjs sheet review/all.jpg [step=0.5] [cols=9]   contact sheet, a frame every `step` s, time-stamped
@@ -41,7 +41,7 @@ async function openPage(port) {
   if (!CHROME) throw new Error('Chrome not found: install Google Chrome or set CHROME=/path/to/chrome');
   const prof = fs.mkdtempSync(path.join(os.tmpdir(), 'fs-chrome-'));
   const chrome = spawn(CHROME, ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${prof}`, '--no-first-run', '--no-default-browser-check',
-    '--hide-scrollbars', '--window-size=1080,1920', '--ignore-gpu-blocklist', '--enable-unsafe-swiftshader', ...(process.env.SOFTWARE_GL ? ['--use-angle=swiftshader'] : []), ...(process.getuid?.() === 0 ? ['--no-sandbox'] : []), '--disable-background-timer-throttling', '--disable-renderer-backgrounding', 'about:blank'], { stdio: 'ignore' });
+    '--hide-scrollbars', '--window-size=1080,1920', '--ignore-gpu-blocklist', '--enable-unsafe-swiftshader', ...(process.env.SOFTWARE_GL ? ['--use-angle=swiftshader'] : []), ...(process.platform === 'linux' || process.env.CHROME_NO_SANDBOX || process.getuid?.() === 0 ? ['--no-sandbox', '--disable-dev-shm-usage'] : []), '--disable-background-timer-throttling', '--disable-renderer-backgrounding', 'about:blank'], { stdio: 'ignore' });
   let dbg;
   for (let i = 0; i < 200 && !dbg; i++) { try { dbg = fs.readFileSync(path.join(prof, 'DevToolsActivePort'), 'utf8').split('\n')[0].trim(); } catch { await sleep(100); } }
   if (!dbg) throw new Error('Chrome did not start');
@@ -80,8 +80,8 @@ else {
     const dur = await P.ev('OP.duration()');
     if (mode === 'check') {
       console.log(`duration ${dur.toFixed(2)} s`);
-      for (const s of await P.ev('OP.shots()')) console.log(`${s.id.padEnd(5)} ${s.at.toFixed(2).padStart(6)} → ${s.end.toFixed(2).padStart(6)}  (${(s.end - s.at).toFixed(2)} s)  ${s.note}`);
-      console.log('captions:'); for (const c of await P.ev('OP.captions()')) console.log(`  ${c.s.toFixed(2).padStart(6)}–${c.e.toFixed(2).padEnd(6)} ${c.text}`);
+      for (const s of await P.ev('OP.shots()')) console.log(`${s.id.padEnd(5)} ${s.at.toFixed(2).padStart(6)} â†’ ${s.end.toFixed(2).padStart(6)}  (${(s.end - s.at).toFixed(2)} s)  ${s.note}`);
+      console.log('captions:'); for (const c of await P.ev('OP.captions()')) console.log(`  ${c.s.toFixed(2).padStart(6)}â€“${c.e.toFixed(2).padEnd(6)} ${c.text}`);
       let bad = 0; for (let t = 0; t < dur; t += 0.25) { try { await P.ev(`OP.draw(${t})`); } catch (e) { bad++; console.log(`ERROR at ${t.toFixed(2)}: ${e.message.split('\n')[0]}`); } }
       if (P.logs.length) console.log(P.logs.join('\n'));
       console.log(bad || P.logs.length ? 'CHECK FAILED' : 'CHECK OK');
@@ -117,6 +117,6 @@ else {
       }
       ff.stdin.end(); await new Promise((r) => ff.on('close', r));
       console.log(`\r${out} (${n} frames, ${hasMix ? 'with data/mix.wav' : 'SILENT: no data/mix.wav'}, ${((Date.now() - t0) / 1000).toFixed(0)} s)`);
-    } else console.log('modes: check · cues · sheet · frames · video · preview');
+    } else console.log('modes: check Â· cues Â· sheet Â· frames Â· video Â· preview');
   } finally { P.close(); srv.close(); }
 }

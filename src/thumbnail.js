@@ -57,6 +57,7 @@ async function renderHtmlToJpg(html, width, height, outPath) {
   const chrome = spawn(CHROME_BIN, [
     '--headless=new', '--remote-debugging-port=0', `--user-data-dir=${prof}`,
     '--no-first-run', '--no-default-browser-check', '--hide-scrollbars',
+    ...(process.platform === 'linux' || process.env.CHROME_NO_SANDBOX ? ['--no-sandbox', '--disable-dev-shm-usage'] : []),
     `--window-size=${width},${height}`, 'about:blank',
   ], { stdio: 'ignore' });
 

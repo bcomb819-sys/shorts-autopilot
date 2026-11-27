@@ -5,6 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     HOST=0.0.0.0 \
     PORT=3456 \
     CHROME=/usr/bin/chromium \
+    CHROME_NO_SANDBOX=1 \
     FACELESS_HOME=/app/.faceless-shorts \
     SKILL_DIR=/app/vendor/faceless-shorts \
     SOFTWARE_GL=1 \

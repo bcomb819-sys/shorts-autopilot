@@ -32,7 +32,8 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       SKILL_DIR: ${{ github.workspace }}/vendor/faceless-shorts
       FACELESS_HOME: ${{ github.workspace }}/.faceless-shorts
-      CHROME: /usr/bin/chromium-browser
+      CHROME: /usr/bin/google-chrome
+      CHROME_NO_SANDBOX: '1'
       SOFTWARE_GL: '1'
       QS: '&res=0.65&aa=0&shadow=1024'
       FPS: '24'
@@ -51,10 +52,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install FFmpeg & Chromium
+      - name: Install FFmpeg & verify Google Chrome
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg chromium-browser
+          sudo apt-get install -y ffmpeg
+          google-chrome --version
+          ffmpeg -version | head -n 1
 
       - name: Cache Kokoro & Whisper models + Python venv
         uses: actions/cache@v4
