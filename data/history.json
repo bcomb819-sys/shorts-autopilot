@@ -1,11 +1,10 @@
 {
-  "styleCursor": 6,
+  "styleCursor": 7,
   "styleBag": [
-    "paper-atlas",
     "stick-story",
     "night-file"
   ],
-  "lastStyleId": "deep-dive",
+  "lastStyleId": "paper-atlas",
   "usedStoryKeys": [
     "io-crack-knuckles",
     "tt-eiffel-twice",
@@ -15,7 +14,8 @@
     "ai-fda656eec1cf",
     "ai-b0c768ed1185",
     "ai-57e0583a27da",
-    "ai-b524c6994991"
+    "ai-b524c6994991",
+    "ai-603ab1e9dfc5"
   ],
   "usedTitles": [
     "The Con Man Who Sold the Eiffel Tower Twice",
@@ -25,6 +25,7 @@
     "Why Your Eyes Are Playing Tricks On You",
     "Why Your Bones Are Screaming Right Now",
     "How One Man Tricked Coca-Cola For Years",
-    "What Happens If You Swear Too Much?"
+    "What Happens If You Swear Too Much?",
+    "How Salt Destroyed a Mighty Empire"
   ]
 }
