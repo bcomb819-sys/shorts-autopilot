@@ -1,9 +1,7 @@
 {
-  "styleCursor": 8,
-  "styleBag": [
-    "night-file"
-  ],
-  "lastStyleId": "stick-story",
+  "styleCursor": 9,
+  "styleBag": [],
+  "lastStyleId": "night-file",
   "usedStoryKeys": [
     "io-crack-knuckles",
     "tt-eiffel-twice",
@@ -15,7 +13,8 @@
     "ai-57e0583a27da",
     "ai-b524c6994991",
     "ai-603ab1e9dfc5",
-    "ai-c98cf304a937"
+    "ai-c98cf304a937",
+    "ai-630c1ec5baaa"
   ],
   "usedTitles": [
     "The Con Man Who Sold the Eiffel Tower Twice",
@@ -27,6 +26,7 @@
     "How One Man Tricked Coca-Cola For Years",
     "What Happens If You Swear Too Much?",
     "How Salt Destroyed a Mighty Empire",
-    "What To Do During a Gas Leak"
+    "What To Do During a Gas Leak",
+    "The Ghost Ship of the Open Atlantic"
   ]
 }
