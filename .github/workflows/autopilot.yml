@@ -10,15 +10,14 @@ name: Shorts Autopilot 24/7 Cloud Poster
 
 on:
   schedule:
-    # 6 Shorts/day at exact user IST peak times (triggered ~7 min early on off-peak :53/:23 to avoid GitHub :00/:30 delays & land on time!):
-    # 02:53 UTC -> ~8:30 AM IST  | 06:23 UTC -> ~12:00 PM IST | 09:53 UTC -> ~3:30 PM IST
-    # 12:53 UTC -> ~6:30 PM IST  | 14:53 UTC -> ~8:30 PM IST  | 16:53 UTC -> ~10:30 PM IST
+    # 5 Shorts/day with EXACT equal spacing (every 4 hrs 48 mins = 288 mins across 24h, triggered off-peak to avoid :00/:30 delays):
+    # 02:53 UTC -> ~8:30 AM IST  | 07:41 UTC -> ~1:18 PM IST | 12:29 UTC -> ~6:06 PM IST
+    # 17:17 UTC -> ~10:54 PM IST | 22:05 UTC -> ~3:42 AM IST (US prime time!)
     - cron: '53 2 * * *'
-    - cron: '23 6 * * *'
-    - cron: '53 9 * * *'
-    - cron: '53 12 * * *'
-    - cron: '53 14 * * *'
-    - cron: '53 16 * * *'
+    - cron: '41 7 * * *'
+    - cron: '29 12 * * *'
+    - cron: '17 17 * * *'
+    - cron: '5 22 * * *'
   workflow_dispatch:
     inputs:
       style:
