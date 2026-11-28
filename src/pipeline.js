@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { ALL_STYLES, JOBS_DIR, PYTHON_BIN, SKILL_DIR } from './config.js';
-import { writeProjectFiles } from './directors/index.js';
+import { buildScriptJson, writeProjectFiles } from './directors/index.js';
 import { addLog, getJob, getState, markStoryUsed, nextStyleId, upsertJob } from './store.js';
 import { generateUniqueStory } from './story-engine.js';
 import { generateThumbnails } from './thumbnail.js';
@@ -56,12 +56,14 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
   addLog('INFO', `Starting automated ${styleMeta.name} pipeline${publishAt ? ` (scheduled for ${publishAt})` : ''}`, jobId);
 
   try {
-    // 1. Strictly unique story blueprint (Ollama -> Gemini -> Unused Verified Bank)
+    // 1. Strictly unique 60-second animated mini-movie blueprint (Ollama -> Gemini -> Unused Bank)
     const { story, generatedBy } = await generateUniqueStory(chosenStyle, { forceSource });
-    markStoryUsed(story.key, story.title);
+    markStoryUsed(story.key, story.title, story);
     upsertJob({
       id: jobId,
       title: story.title,
+      genre: story.genre || '',
+      summary: story.summary || '',
       hookText: story.hookText,
       description: story.description,
       tags: story.tags,
@@ -70,7 +72,7 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
       stage: 'Scaffolding project & compiling shots...',
       status: 'scaffolding',
     });
-    addLog('INFO', `Story ready (${generatedBy}): "${story.title}"`, jobId);
+    addLog('INFO', `Story ready (${generatedBy}, ${story.genre || chosenStyle}, ${story.wordCount || '?'}w): "${story.title}"`, jobId);
 
     // 2. Scaffold style example into project directory
     const exampleSrc = path.join(SKILL_DIR, 'styles', story.style, 'example');
@@ -85,9 +87,50 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
     // 3. Compile script.json + src/shots.js
     writeProjectFiles(projDir, story);
 
-    // 4. Local Kokoro TTS voice synthesis
-    upsertJob({ id: jobId, status: 'voice', stage: 'Synthesizing local Kokoro AI voice...' });
+    // 4. Local Kokoro TTS voice synthesis + automatic 60.00-second pacing calibration
+    upsertJob({ id: jobId, status: 'voice', stage: 'Synthesizing local Kokoro AI voice (targeting exact 60s)...' });
     await runCmd(PYTHON_BIN, [path.join(SKILL_DIR, 'scripts', 'voice.py'), projDir], { cwd: projDir });
+
+    const TARGET_AUDIO_SEC = 59.55; // + 0.04s cover frame + <=0.41s clean final hold = EXACT 60.00s!
+    let linesMeta = JSON.parse(fs.readFileSync(path.join(projDir, 'data', 'lines.json'), 'utf8'));
+    let rawDur = Number(linesMeta.duration || 0);
+    if (rawDur > 0 && (rawDur < 57.5 || rawDur > 59.9)) {
+      const curScript = JSON.parse(fs.readFileSync(path.join(projDir, 'script.json'), 'utf8'));
+      const lineCount = Math.max(1, (curScript.lines || []).length);
+      const curSpeed = Number(curScript.speed || styleMeta.speed || 1.0);
+      const curGapsTotal = (curScript.lead || 0.12) + (curScript.outro || 0.45) + (curScript.gap || 0.16) * Math.max(0, lineCount - 1);
+      const speechOnly = Math.max(10, rawDur - curGapsTotal);
+
+      let nextSpeed = curSpeed;
+      let nextGap = curScript.gap || 0.16;
+      let nextOutro = curScript.outro || 0.45;
+      let nextLead = curScript.lead || 0.12;
+
+      if (rawDur > 59.9) {
+        // Trim gaps slightly first, then calibrate speed smoothly so zero words are ever cut off
+        nextGap = 0.09;
+        nextLead = 0.08;
+        nextOutro = 0.25;
+        const availSpeech = TARGET_AUDIO_SEC - (nextLead + nextOutro + nextGap * Math.max(0, lineCount - 1));
+        nextSpeed = Math.min(1.24, Math.max(0.85, curSpeed * (speechOnly / Math.max(20, availSpeech))));
+      } else {
+        // Natural conversational pacing to fill ~59.3s smoothly without awkward silences
+        const ratio = TARGET_AUDIO_SEC / rawDur;
+        nextSpeed = Math.max(0.86, Math.min(1.08, curSpeed / Math.min(ratio, 1.18)));
+        const estSpeech = speechOnly * (curSpeed / nextSpeed);
+        const remaining = Math.max(1.2, TARGET_AUDIO_SEC - estSpeech - nextLead);
+        nextGap = Math.min(0.56, Math.max(0.16, (remaining - 0.8) / Math.max(1, lineCount)));
+        nextOutro = Math.min(2.0, Math.max(0.45, remaining - nextGap * Math.max(0, lineCount - 1)));
+      }
+
+      const calibrated = buildScriptJson(story, { speed: nextSpeed, gap: nextGap, lead: nextLead, outro: nextOutro, endGap: Math.min(0.45, nextGap) });
+      fs.writeFileSync(path.join(projDir, 'script.json'), JSON.stringify(calibrated, null, 2));
+      addLog('INFO', `Calibrating voice pacing (${rawDur.toFixed(2)}s -> 60s target: speed=${calibrated.speed}x, gap=${calibrated.gap}s, outro=${calibrated.outro}s)...`, jobId);
+      await runCmd(PYTHON_BIN, [path.join(SKILL_DIR, 'scripts', 'voice.py'), projDir], { cwd: projDir });
+      linesMeta = JSON.parse(fs.readFileSync(path.join(projDir, 'data', 'lines.json'), 'utf8'));
+      rawDur = Number(linesMeta.duration || 0);
+      addLog('INFO', `Calibrated voice duration: ${rawDur.toFixed(2)}s`, jobId);
+    }
 
     // 5. Local Whisper word-level subtitle alignment
     upsertJob({ id: jobId, status: 'subtitles', stage: 'Aligning word-synced captions with Whisper...' });
@@ -133,40 +176,57 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
     await runCmd(process.execPath, videoArgs, {
       cwd: projDir,
       env: cloudEnv,
-      timeoutMs: 1_800_000,
+      timeoutMs: 2_400_000,
     });
 
     const rawVideoPath = path.join(projDir, 'renders', 'video.mp4');
     let videoPath = rawVideoPath;
 
-    // 8b. Enforce strict YouTube Shorts compliance (1080x1920 9:16, <= 59s, high-bitrate H.264) + 1-frame (0.04s) cover anchor at 0:00 (instant motion, zero swipe-away lag!)
-    if (st.settings.bakeVerticalCover !== false && fs.existsSync(coverPath)) {
-      const coveredPath = path.join(projDir, 'renders', 'short.mp4');
-      try {
-        await runCmd('ffmpeg', [
-          '-y', '-v', 'error',
-          '-loop', '1', '-t', '0.04', '-framerate', String(cloudEnv.FPS), '-i', coverPath,
-          '-f', 'lavfi', '-t', '0.04', '-i', 'anullsrc=r=48000:cl=stereo',
-          '-i', rawVideoPath,
-          '-filter_complex',
-          '[0:v]scale=1080:1920:flags=lanczos,setsar=1,format=yuv420p[cv];[2:v]scale=1080:1920:flags=lanczos,setsar=1,format=yuv420p[mv];[cv][1:a][mv][2:a]concat=n=2:v=1:a=1[v][a]',
-          '-map', '[v]', '-map', '[a]',
-          '-t', '59',
-          '-c:v', 'libx264', '-preset', 'medium', '-crf', '15', '-profile:v', 'high', '-level', '4.2', '-pix_fmt', 'yuv420p',
-          '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
-          coveredPath,
-        ], { cwd: projDir, timeoutMs: 240_000 });
-        if (fs.existsSync(coveredPath) && fs.statSync(coveredPath).size > 100_000) {
-          videoPath = coveredPath;
-        }
-      } catch (err) {
-        addLog('WARN', `Cover bake skipped (using original 9:16 MP4): ${err.message}`, jobId);
+    // 8b. Enforce EXACT 60.00-second YouTube Shorts master (1080x1920 9:16, high-bitrate H.264, stereo AAC)
+    //     with 1-frame (0.04s) cover anchor at 0:00 and clean hold-pad/exact trim to 60.00s.
+    const coveredPath = path.join(projDir, 'renders', 'short.mp4');
+    const useCover = st.settings.bakeVerticalCover !== false && fs.existsSync(coverPath);
+    try {
+      const ffArgs = useCover
+        ? [
+            '-y', '-v', 'error',
+            '-loop', '1', '-t', '0.04', '-framerate', String(cloudEnv.FPS), '-i', coverPath,
+            '-f', 'lavfi', '-t', '0.04', '-i', 'anullsrc=r=48000:cl=stereo',
+            '-i', rawVideoPath,
+            '-filter_complex',
+            `[0:v]scale=1080:1920:flags=lanczos,setsar=1,fps=${cloudEnv.FPS},format=yuv420p[cv];[2:v]scale=1080:1920:flags=lanczos,setsar=1,fps=${cloudEnv.FPS},format=yuv420p[mv];[cv][1:a][mv][2:a]concat=n=2:v=1:a=1[vc][ac];[vc]tpad=stop_mode=clone:stop_duration=15[v];[ac]apad=whole_dur=60[a]`,
+            '-map', '[v]', '-map', '[a]',
+            '-t', '60.000',
+            '-c:v', 'libx264', '-preset', 'medium', '-crf', '15', '-profile:v', 'high', '-level', '4.2', '-pix_fmt', 'yuv420p',
+            '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
+            coveredPath,
+          ]
+        : [
+            '-y', '-v', 'error',
+            '-i', rawVideoPath,
+            '-filter_complex',
+            `[0:v]scale=1080:1920:flags=lanczos,setsar=1,fps=${cloudEnv.FPS},format=yuv420p,tpad=stop_mode=clone:stop_duration=15[v];[0:a]apad=whole_dur=60[a]`,
+            '-map', '[v]', '-map', '[a]',
+            '-t', '60.000',
+            '-c:v', 'libx264', '-preset', 'medium', '-crf', '15', '-profile:v', 'high', '-level', '4.2', '-pix_fmt', 'yuv420p',
+            '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart',
+            coveredPath,
+          ];
+      await runCmd('ffmpeg', ffArgs, { cwd: projDir, timeoutMs: 300_000 });
+      if (fs.existsSync(coveredPath) && fs.statSync(coveredPath).size > 100_000) {
+        videoPath = coveredPath;
       }
+    } catch (err) {
+      addLog('WARN', `Exact-60s master pass warning (using raw 9:16 MP4): ${err.message}`, jobId);
     }
 
     const sizeMb = +(fs.statSync(videoPath).size / (1024 * 1024)).toFixed(2);
-    const linesJson = JSON.parse(fs.readFileSync(path.join(projDir, 'data', 'lines.json'), 'utf8'));
-    const durationSec = Number(linesJson.duration || 0);
+    let durationSec = Number(rawDur || 60);
+    try {
+      const probe = await runCmd('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', videoPath], { cwd: projDir, timeoutMs: 15_000 });
+      const parsed = Number(probe.stdout.trim());
+      if (Number.isFinite(parsed) && parsed > 0) durationSec = +parsed.toFixed(2);
+    } catch {}
 
     upsertJob({
       id: jobId,

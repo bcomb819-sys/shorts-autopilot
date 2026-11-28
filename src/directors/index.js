@@ -3,22 +3,25 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { ALL_STYLES } from '../config.js';
 
-export function buildScriptJson(story) {
+export function buildScriptJson(story, pacing = {}) {
   const meta = ALL_STYLES.find((s) => s.id === story.style) || ALL_STYLES[0];
+  const speed = Number(pacing.speed || story.speed || meta.speed || 1.0);
+  const gap = pacing.gap != null ? Number(pacing.gap) : (story.style === 'night-file' ? 0.24 : 0.16);
+  const lead = pacing.lead != null ? Number(pacing.lead) : 0.12;
+  const outro = pacing.outro != null ? Number(pacing.outro) : 0.45;
   return {
     title: story.title,
     voice: story.voice || meta.voice,
-    speed: story.speed || meta.speed,
-    // Snappy viral Shorts pacing: instant 0.06s start, tight inter-line cuts, minimal 0.18s outro for seamless looping!
-    lead: 0.06,
-    outro: 0.18,
-    gap: story.style === 'night-file' ? 0.14 : 0.09,
+    speed: +speed.toFixed(3),
+    lead: +lead.toFixed(3),
+    outro: +outro.toFixed(3),
+    gap: +gap.toFixed(3),
     music: story.music || meta.music,
     sources: story.sources || [],
     lines: story.lines.map((ln, idx) => {
       const obj = { text: ln.text };
       if (ln.caps) obj.caps = ln.caps;
-      if (idx === story.lines.length - 1) obj.gap = 0.08;
+      if (idx === story.lines.length - 1) obj.gap = +(pacing.endGap ?? 0.2).toFixed(3);
       return obj;
     }),
   };
@@ -75,26 +78,31 @@ function compileTallTale(story) {
   const data = JSON.stringify(story.lines);
   const seed = storySeed(story);
   const camFlip = seed % 2 === 0 ? 1 : -1;
-  const heroPalette = [
+  const fallbackHero = [
     { body: '#E8734A', hat: 'cap', hatCol: '#2E5A44', band: '#F2C230', neck: 'scarf', neckCol: '#F2C230', extra: ['glasses'] },
-    { body: '#3B78C4', hat: 'cap', hatCol: '#D84A3A', band: '#F5F1E8', neck: 'tie', neckCol: '#F2C230', extra: [] },
-    { body: '#2E8B6E', hat: 'bowler', hatCol: '#2A2638', band: '#F2C230', neck: 'scarf', neckCol: '#E85A4F', extra: ['glasses'] },
-    { body: '#C84B5A', hat: 'cap', hatCol: '#1F2A44', band: '#8BD186', neck: 'bowtie', neckCol: '#F2C230', extra: ['mustache'] },
-    { body: '#7C4DBC', hat: 'bowler', hatCol: '#1F1C33', band: '#F2C230', neck: 'tie', neckCol: '#4FD1E8', extra: ['glasses'] },
+    { body: '#3B78C4', hat: 'beanie', hatCol: '#D84A3A', band: '#F5F1E8', neck: 'tie', neckCol: '#F2C230', extra: ['freckles'] },
+    { body: '#2E8B6E', hat: 'bun', hatCol: '#4A3123', band: '#F2C230', neck: 'scarf', neckCol: '#E85A4F', extra: ['blush'] },
+    { body: '#C84B5A', hat: 'cap', hatCol: '#1F2A44', band: '#8BD186', neck: 'bowtie', neckCol: '#F2C230', extra: ['glasses'] },
+    { body: '#7C4DBC', hat: 'boater', hatCol: '#E6C27A', band: '#C84B5A', neck: 'tie', neckCol: '#4FD1E8', extra: ['pencil'] },
   ][seed % 5];
-  const sidePalette = [
+  const fallbackPartner = [
     { body: '#4A5D7A', pattern: 'vest', patCol: '#2E3A4E', hat: 'bowler', hatCol: '#2A2638', band: '#B5372E', neck: 'tie', neckCol: '#B5372E', extra: ['mustache'] },
-    { body: '#D48C3B', pattern: 'vest', patCol: '#8C5420', hat: 'cap', hatCol: '#243B55', band: '#F2C230', neck: 'scarf', neckCol: '#243B55', extra: ['glasses'] },
-    { body: '#3A7A68', pattern: 'vest', patCol: '#234E42', hat: 'bowler', hatCol: '#1F1C33', band: '#F2C230', neck: 'bowtie', neckCol: '#E85A4F', extra: [] },
+    { body: '#D48C3B', pattern: 'apron', patCol: '#F4EFE4', hat: 'flower', hatCol: '#E85A4F', band: '#F2C230', neck: 'collar', neckCol: '#FFFFFF', extra: ['blush'] },
+    { body: '#3A7A68', pattern: 'check', patCol: '#234E42', hat: 'visor', hatCol: '#243B55', band: '#F2C230', neck: 'none', neckCol: '#F2C230', extra: ['glasses'] },
   ][(seed >> 3) % 3];
+  const fallbackExtra = { body: '#3B384A', pattern: 'vest', patCol: '#252230', hat: 'tophat', hatCol: '#252230', band: '#C9A13B', neck: 'bowtie', neckCol: '#D8343F', dots: 1, extra: ['monocle', 'mustache'] };
+  // Consistent character designs from the story blueprint across ALL scenes!
+  const heroPalette = story.characters?.hero?.look || fallbackHero;
+  const sidePalette = story.characters?.partner?.look || fallbackPartner;
+  const bossPalette = story.characters?.extra?.look || fallbackExtra;
   const wallThemes = [
     { off: '#2B5E52', offM: '#377164', gal: '#B9463E', galM: '#C95A50' },
     { off: '#2D3E66', offM: '#3A4F80', gal: '#8E3B68', galM: '#A34A7A' },
     { off: '#5E442B', offM: '#755638', gal: '#2E6B5E', galM: '#3C8273' },
     { off: '#3B2F54', offM: '#4D3D6E', gal: '#B86A2E', galM: '#CC7B3B' },
   ][(seed >> 5) % 4];
-  const signLabel = String(story.hookText || 'BIG DEAL').toUpperCase().slice(0, 18);
-  return `// Auto-generated Tall Tale 3D shots for: ${JSON.stringify(story.title)}
+  const signLabel = String(story.setting || story.hookText || 'MAIN STREET').toUpperCase().slice(0, 18);
+  return `// Auto-generated Tall Tale 3D mini-movie shots for: ${JSON.stringify(story.title)}
 import * as THREE from 'three';
 import { ctx, clamp, lerp, seg, eo, eio, eob } from './core/lib.js';
 import { T, L } from './core/timing.js';
@@ -105,8 +113,8 @@ import { Toon, PROPS } from './core/toon.js';
 
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
 const mix = (a, b, k) => a.clone().lerp(b, k);
-const talk = (t, on = 1) => (on ? 0.25 + 0.75 * Math.abs(Math.sin(t * 13)) * (0.6 + 0.4 * Math.sin(t * 5.3)) : 0);
-const blink = (t, off = 0) => (((t + off) % 3.2) < 0.12 ? 1 : 0);
+const talk = (t, on = 1) => (on ? 0.22 + 0.78 * Math.abs(Math.sin(t * 14)) * (0.65 + 0.35 * Math.sin(t * 5.7)) : 0);
+const blink = (t, off = 0) => (((t + off) % 3.1) < 0.12 ? 1 : 0);
 const LINES = ${data};
 const CF = ${camFlip};
 ${retentionHudSnippet(story.hookText, '#F2C230')}
@@ -114,19 +122,38 @@ ${retentionHudSnippet(story.hookText, '#F2C230')}
 const LOOK = {
   hero: ${JSON.stringify(heroPalette)},
   side: ${JSON.stringify(sidePalette)},
-  boss: { body: '#3B384A', pattern: 'vest', patCol: '#252230', hat: 'tophat', hatCol: '#252230', band: '#C9A13B', neck: 'bowtie', neckCol: '#D8343F', dots: 1, extra: ['monocle', 'mustache'] },
+  boss: ${JSON.stringify(bossPalette)},
 };
 const person = (k) => new Toon({ ...LOOK[k], extra: [...(LOOK[k].extra || [])] });
 
 function resolveProp(name) {
-  if (!name) return null;
+  if (!name || name === 'none') return null;
   if (name === 'dollarBill' || name === 'bill') return PROPS.bill;
   if (name === 'repairBill') return PROPS.paper('BILL');
-  if (name === 'book') return PROPS.book('RULES', 1);
-  if (name === 'paper') return PROPS.paper('NEWS');
-  if (name === 'sign') return PROPS.sign('VOTE', '#F2C230');
+  if (name === 'book') return PROPS.book('NOTES', 1);
+  if (name === 'paper') return PROPS.paper('NOTE');
+  if (name === 'sign') return PROPS.sign('LOOK', '#F2C230');
   if (typeof PROPS[name] === 'function' && PROPS[name].length >= 2) return PROPS[name];
-  return PROPS.bill;
+  return null;
+}
+
+function poseForAction(action, t, isSpeaking, propFn) {
+  const wave = Math.sin(t * 7.5) * 9;
+  const g = isSpeaking ? 1 : 0.35;
+  if (action === 'run') return { legs: 'run', phase: t * 11, lean: 9, armL: [36 * Math.sin(t * 11), 35], armR: [-36 * Math.sin(t * 11), 35], holdR: propFn };
+  if (action === 'walk') return { legs: 'walk', phase: t * 6.8, lean: 4, armL: [22 * Math.sin(t * 6.8), 18], armR: propFn ? [44 + wave * 0.4, 118] : [-22 * Math.sin(t * 6.8), 18], holdR: propFn };
+  if (action === 'jump') return { legs: 'jump', bob: -Math.abs(Math.sin(t * 7)) * 28, armL: [115, 30], armR: [115, 30], holdR: propFn };
+  if (action === 'gasp') return { legs: 'stand', lean: -6, armL: [85, 70], armR: [85, 70], squash: 0.08 * Math.sin(t * 12), holdR: propFn };
+  if (action === 'point') return { legs: 'stand', lean: 5, armL: [16, 12], armR: [78 + wave * 0.5, 22], holdR: propFn };
+  if (action === 'wave') return { legs: 'stand', armL: [18, 12], armR: [120 + wave * 1.4, 24], holdR: propFn };
+  if (action === 'shrug') return { legs: 'stand', armL: [62, 74], armR: [62, 74], bob: Math.sin(t * 5) * 8, holdR: propFn };
+  return {
+    legs: 'stand',
+    bob: Math.sin(t * 3.4) * (isSpeaking ? 6 : 2),
+    armL: [18 + wave * 0.4 * g, 16],
+    armR: propFn ? [44 + wave * 0.7, 122] : [26 + wave * g, 24 + 24 * g],
+    holdR: propFn,
+  };
 }
 
 const BADGE_BG = { gold: '#F2C230', green: '#8BD186', red: '#E85A4F', cream: '#F5F1E8' };
@@ -158,22 +185,53 @@ export function buildShots(E) {
     field: { bloom: 0.18, aperture: 0, maxblur: 0, fov: 44 },
   };
   const shoot = (scene, people, from, to, at, at2, k, look) => {
-    if (cam.fov !== (look.fov || 44)) { cam.fov = look.fov || 44; cam.updateProjectionMatrix(); }
+    const fov = look.fov || 44;
+    if (cam.fov !== fov) { cam.fov = fov; cam.updateProjectionMatrix(); }
     cam.position.copy(mix(from, to, k));
     const tgt = at2 ? mix(at, at2, k) : at;
     cam.lookAt(tgt); people.forEach((p) => p.face(cam));
     E.render(scene, cam, { ...look, focus: cam.position.distanceTo(tgt) });
   };
 
-  // Unique seeded sets per video
+  // Cinematic shot framing around hero (hx, hz) and partner (px, pz): wide | medium | closeup | reaction
+  const frameCam = (shot, speaker, hx, hz, px, pz, sgn, k, baseLook) => {
+    const midX = (hx + px) / 2, midZ = (hz + pz) / 2;
+    const focusHero = speaker === 'partner' ? (shot === 'reaction') : (shot !== 'reaction');
+    const fx = focusHero ? hx : px, fz = focusHero ? hz : pz;
+    if (shot === 'closeup' || shot === 'reaction') {
+      return {
+        from: V3(fx + 0.22 * sgn, 1.84, fz + 2.15),
+        to: V3(fx - 0.08 * sgn, 1.82, fz + 1.65),
+        at: V3(fx, 1.66, fz),
+        look: { ...baseLook, fov: 36 },
+      };
+    }
+    if (shot === 'wide') {
+      return {
+        from: V3(midX + 1.15 * sgn, 2.25, midZ + 5.2),
+        to: V3(midX - 0.35 * sgn, 1.98, midZ + 3.85),
+        at: V3(midX, 1.48, midZ),
+        look: { ...baseLook, fov: 48 },
+      };
+    }
+    // medium two-shot conversation
+    return {
+      from: V3(midX - 0.45 * sgn, 1.92, midZ + 3.35),
+      to: V3(midX + 0.28 * sgn, 1.84, midZ + 2.65),
+      at: V3(midX, 1.56, midZ),
+      look: { ...baseLook, fov: 42 },
+    };
+  };
+
+  // Consistent colourful 3D worlds built once for the whole mini-movie
   const ST = WD.mainStreet(E, {});
   const stHero = person('hero'), stSide = person('side');
   ST.scene.add(stHero.group, stSide.group);
 
-  const OFF = WD.interior(E, { w: 7.4, depth: 6.4, h: 4.2, wall: ${JSON.stringify(wallThemes.off)}, motif: ${JSON.stringify(wallThemes.offM)}, floor: '#8A5432', ceiling: '#2A2638', counterOn: false, signText: null, litter: true });
+  const OFF = WD.interior(E, { w: 7.4, depth: 6.4, h: 4.2, wall: ${JSON.stringify(wallThemes.off)}, motif: ${JSON.stringify(wallThemes.offM)}, floor: '#8A5432', ceiling: '#2A2638', counterOn: false, signText: null, litter: false });
   const dk = PR.desk(2.4); dk.position.set(0.2, 0, -3.2); OFF.scene.add(dk);
-  const offHero = person('hero'), offBoss = person('boss');
-  OFF.scene.add(offHero.group, offBoss.group);
+  const offHero = person('hero'), offSide = person('side');
+  OFF.scene.add(offHero.group, offSide.group);
 
   const GAL = WD.interior(E, { w: 8.2, depth: 6.8, h: 4.3, wall: ${JSON.stringify(wallThemes.gal)}, motif: ${JSON.stringify(wallThemes.galM)}, floor: '#A8693E', ceiling: '#3A2820', counterOn: true, signText: ${JSON.stringify(signLabel)}, litter: false });
   const galHero = person('hero'), galSide = person('side');
@@ -184,55 +242,93 @@ export function buildShots(E) {
   MD.scene.add(mdHero.group, mdSide.group);
 
   const SUN = WD.meadow(E, { sunset: true, fenceOn: true });
-  const sunHero = person('hero'); sunHero.tint('#FFE6D6'); SUN.scene.add(sunHero.group);
+  const sunHero = person('hero'), sunSide = person('side');
+  sunHero.tint('#FFE6D6'); sunSide.tint('#FFE6D6');
+  SUN.scene.add(sunHero.group, sunSide.group);
+
+  // Keep consistent street Z for continuous street scenes
+  const streetZ = -14 - (${seed % 3}) * 6;
 
   LINES.forEach((ln, i) => {
     const st = cut(i);
     const propFn = resolveProp(ln.prop);
     const mood = ln.mood || 'happy';
+    const pMood = ln.partnerMood || (mood === 'smug' ? 'shock' : mood === 'angry' ? 'worried' : 'neutral');
     const scType = ln.scene || 'street';
+    const shot = ln.shot || (i === 0 ? 'closeup' : 'medium');
+    const speaker = ln.speaker || 'narrator';
+    const action = ln.action || 'stand';
     const sgn = (i % 2 === 0 ? 1 : -1) * CF;
     add({
       id: 'S' + String(i + 1).padStart(2, '0'),
       at: st,
-      note: scType + ' · ' + mood,
+      note: scType + ' · ' + shot + ' · ' + speaker + ' · ' + mood,
       draw(lt, d, t, blit) {
         const k = eio(clamp(lt / Math.max(0.2, d)));
-        const wave = Math.sin(t * 8) * 6;
-        const pop = clamp((lt - Math.min(0.45, d * 0.25)) / 0.22);
+        const pop = clamp((lt - Math.min(0.4, d * 0.22)) / 0.22);
+        const heroSpeaking = speaker === 'hero' || (speaker === 'narrator' && i % 2 === 0);
+        const partnerSpeaking = speaker === 'partner' || speaker === 'extra';
+        const heroPose = poseForAction(heroSpeaking ? action : 'stand', t, heroSpeaking, heroSpeaking ? propFn : null);
+        const partnerPose = poseForAction(partnerSpeaking ? action : 'stand', t + 0.7, partnerSpeaking, partnerSpeaking ? propFn : null);
+        const heroState = {
+          ...heroPose,
+          mood,
+          look: [0.45 * CF, Math.sin(t * 2.1) * 0.12],
+          talk: talk(t, speaker === 'hero' ? 1 : speaker === 'narrator' ? 0.35 : 0),
+          sweat: mood === 'worried' || mood === 'shock',
+          tears: mood === 'sad',
+          blink: blink(t),
+          v: 'h' + i,
+        };
+        const partnerState = {
+          ...partnerPose,
+          mood: pMood,
+          look: [-0.45 * CF, Math.sin(t * 1.9 + 1) * 0.12],
+          talk: talk(t + 0.3, partnerSpeaking ? 1 : 0),
+          sweat: pMood === 'worried' || pMood === 'shock',
+          tears: pMood === 'sad',
+          blink: blink(t, 1.3),
+          v: 'p' + i,
+        };
+
         if (scType === 'office') {
-          offHero.at(-0.55 * CF, 0, -2.05); offBoss.at(0.45 * CF, 0, -3.95);
-          offHero.set({ mood, armR: [44 + wave, 122], holdR: propFn, armL: [24, 10], talk: talk(t, 0.7), blink: blink(t), v: 'o' + i });
-          offBoss.set({ mood: mood === 'angry' ? 'angry' : mood === 'smug' ? 'shock' : 'neutral', armL: [35, -20], armR: [35, -20], blink: blink(t, 1.2) });
-          shoot(OFF.scene, [offHero, offBoss], V3(-0.48 * sgn, 1.95, 2.3), V3(0.22 * sgn, 1.8, 1.15), V3(0, 1.5, -2.9), null, k, LOOKS.room);
+          const hx = -0.62 * CF, hz = -2.05, px = 0.58 * CF, pz = -2.35;
+          offHero.at(hx, 0, hz); offSide.at(px, 0, pz);
+          offHero.set(heroState); offSide.set(partnerState);
+          const f = frameCam(shot, speaker, hx, hz, px, pz, sgn, k, LOOKS.room);
+          shoot(OFF.scene, [offHero, offSide], f.from, f.to, f.at, null, k, f.look);
         } else if (scType === 'gallery') {
-          galHero.at(-0.55 * CF, 0, -2.1); galSide.at(0.62 * CF, 0, -2.15);
-          galHero.set({ mood, armR: [44 + wave, 122], holdR: propFn, armL: [30, 10], blink: blink(t), v: 'g' + i });
-          galSide.set({ mood: 'laugh', armL: [44, 118], holdL: PROPS.stack, blink: blink(t, 0.9), v: 'gs' + i });
-          shoot(GAL.scene, [galHero, galSide], V3(-0.65 * sgn, 1.95, 2.7), V3(0.25 * sgn, 1.78, 1.48), V3(0, 1.48, -2.15), null, k, LOOKS.room);
+          const hx = -0.6 * CF, hz = -2.1, px = 0.65 * CF, pz = -2.15;
+          galHero.at(hx, 0, hz); galSide.at(px, 0, pz);
+          galHero.set(heroState); galSide.set(partnerState);
+          const f = frameCam(shot, speaker, hx, hz, px, pz, sgn, k, LOOKS.room);
+          shoot(GAL.scene, [galHero, galSide], f.from, f.to, f.at, null, k, f.look);
         } else if (scType === 'meadow') {
-          mdHero.at(-0.45 * CF, 0, -1.6); mdSide.at(0.65 * CF, 0, -1.9);
-          mdHero.set({ mood, legs: k < 0.7 ? 'walk' : 'stand', phase: t * 7, armR: [44 + wave, 122], holdR: propFn, blink: blink(t), v: 'm' + i });
-          mdSide.set({ mood: 'happy', armL: [40, 10], blink: blink(t, 1.4) });
-          shoot(MD.scene, [mdHero, mdSide], V3(-0.95 * sgn, 1.92, 3.6), V3(0.25 * sgn, 1.72, 2.15), V3(0.05, 1.4, -1.7), null, k, LOOKS.field);
+          const hx = -0.55 * CF, hz = -1.65, px = 0.65 * CF, pz = -1.85;
+          mdHero.at(hx, 0, hz); mdSide.at(px, 0, pz);
+          mdHero.set(heroState); mdSide.set(partnerState);
+          const f = frameCam(shot, speaker, hx, hz, px, pz, sgn, k, LOOKS.field);
+          shoot(MD.scene, [mdHero, mdSide], f.from, f.to, f.at, null, k, f.look);
         } else if (scType === 'sunset') {
-          sunHero.at(0, 0, lerp(-2.2, -0.95, k));
-          sunHero.set({ mood, legs: k < 0.65 ? 'walk' : 'stand', phase: t * 7, armR: [44 + wave, 124], holdR: propFn, armL: [26, 10], blink: blink(t), v: 'su' + i });
-          shoot(SUN.scene, [sunHero], V3(-0.95 * sgn, 1.95, 3.8), V3(0.0, 1.75, 2.1), V3(0, 1.5, -1.4), null, k, LOOKS.field);
+          const hx = -0.45 * CF, hz = -1.5, px = 0.62 * CF, pz = -1.6;
+          sunHero.at(hx, 0, hz); sunSide.at(px, 0, pz);
+          sunHero.set(heroState); sunSide.set(partnerState);
+          const f = frameCam(shot, speaker, hx, hz, px, pz, sgn, k, LOOKS.field);
+          shoot(SUN.scene, [sunHero, sunSide], f.from, f.to, f.at, null, k, f.look);
         } else {
-          const z = -10 - ((i + ${seed % 4}) % 4) * 7;
-          stHero.at(-0.5 * CF, 0, z); stSide.at(0.65 * CF, 0, z - 0.5);
-          stHero.set({ mood, legs: i === 0 ? 'stand' : 'walk', phase: t * 7, armR: [44 + wave, 124], holdR: propFn, armL: [24, 10], blink: blink(t), v: 'st' + i });
-          stSide.set({ mood: mood === 'smug' ? 'shock' : 'happy', armL: [35, 10], blink: blink(t, 1.1) });
-          shoot(ST.scene, [...ST.people, stHero, stSide], V3(0.85 * sgn, 2.1, z + 5.2), V3(-0.2 * sgn, 1.78, z + 3.1), V3(0, 1.45, z), null, k, LOOKS.street);
+          const hx = -0.58 * CF, hz = streetZ, px = 0.66 * CF, pz = streetZ - 0.35;
+          stHero.at(hx, 0, hz); stSide.at(px, 0, pz);
+          stHero.set(heroState); stSide.set(partnerState);
+          const f = frameCam(shot, speaker, hx, hz, px, pz, sgn, k, LOOKS.street);
+          shoot(ST.scene, [...ST.people, stHero, stSide], f.from, f.to, f.at, null, k, f.look);
         }
         blit();
         drawBadge(pop, ln.badge, ln.badgeSub, ln.badgeColor);
         drawRetentionHud(t);
       },
     });
-    if (i > 0) cue(st, 'whoosh', { gain: 0.7 });
-    cue(st + 0.35, ln.sfx || 'pop', { gain: 0.8 });
+    if (i > 0) cue(st, 'whoosh', { gain: 0.55 });
+    cue(st + 0.25, ln.sfx || 'pop', { gain: 0.72 });
   });
   return { shots: S, cues: CUES };
 }
@@ -495,11 +591,12 @@ export function buildShots() {
     const st = cut(i);
     const sc = ln.scene || 'room';
     const camX = 540 + (i % 2 === 0 ? 1 : -1) * ((i + ${seed}) % 3 === 0 ? 18 : 0);
+    const shotZoom = ln.shot === 'closeup' || ln.shot === 'reaction' ? 0.24 : ln.shot === 'wide' ? 0.04 : 0.11;
     add({
       id: 'S' + String(i + 1).padStart(2, '0'),
       at: st,
-      cam: [camX, sc === 'xray' ? 830 : 860],
-      zoom: sc === 'xray' ? 0.22 : (i % 2 ? 0.11 : 0.07),
+      cam: [camX, ln.shot === 'closeup' || ln.shot === 'reaction' ? 760 : 860],
+      zoom: sc === 'xray' ? Math.max(0.2, shotZoom) : shotZoom,
       note: sc,
       draw(lt, d, t) {
         if (sc === 'xray') {
@@ -592,11 +689,12 @@ export function buildShots() {
     const st = cut(i);
     const sc = ln.scene || 'night_living';
     const dir = ((i + ${seed}) % 2 === 0) ? 1 : -1;
+    const shotZoom = ln.shot === 'closeup' || ln.shot === 'reaction' ? 0.22 : ln.shot === 'wide' ? 0.04 : 0.1;
     add({
       id: 'S' + String(i + 1).padStart(2, '0'),
       at: st,
-      cam: [540, 1060],
-      zoom: i % 2 === 0 ? 0.1 : 0.06,
+      cam: [540, ln.shot === 'closeup' || ln.shot === 'reaction' ? 920 : 1060],
+      zoom: shotZoom,
       note: sc,
       draw(lt, d, t) {
         const k = eio(clamp(lt / Math.max(0.2, d)));
@@ -678,11 +776,12 @@ export function buildShots() {
     const sc = ln.scene || 'map';
     const roleA = ln.role || ${JSON.stringify(roles)}[(i + ${seed}) % 3];
     const roleB = ${JSON.stringify(roles)}[(i + 1 + ${seed}) % 3];
+    const shotZoom = ln.shot === 'closeup' || ln.shot === 'reaction' ? 0.2 : ln.shot === 'wide' ? 0.04 : 0.1;
     add({
       id: 'S' + String(i + 1).padStart(2, '0'),
       at: st,
       cam: [540, 940],
-      zoom: i % 2 === 0 ? 0.11 : 0.07,
+      zoom: shotZoom,
       note: sc,
       draw(lt, d, t) {
         const p = eio(clamp(lt / Math.max(0.2, d)));
@@ -724,8 +823,8 @@ export function buildShots() {
 `;
 }
 
-export function writeProjectFiles(projDir, story) {
-  const scriptObj = buildScriptJson(story);
+export function writeProjectFiles(projDir, story, pacing = {}) {
+  const scriptObj = buildScriptJson(story, pacing);
   fs.writeFileSync(path.join(projDir, 'script.json'), JSON.stringify(scriptObj, null, 2));
 
   let shotsCode;

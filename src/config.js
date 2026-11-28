@@ -42,12 +42,12 @@ export const CHROME_BIN = [
 ].find((p) => p && fs.existsSync(p));
 
 export const ALL_STYLES = [
-  { id: 'tall-tale', name: 'Tall Tale 3D', voice: 'am_michael', voiceLabel: 'Michael (US Male · Storyteller)', speed: 1.06, music: 'bounce', fps: 30, categoryId: '23', desc: 'Funny true stories, crazy loopholes, heists & weird history in a bright 3D miniature world' },
-  { id: 'deep-dive', name: 'Deep Dive 3D', voice: 'am_fenrir', voiceLabel: 'Fenrir (US Male · Deep Science)', speed: 1.02, music: 'tension', fps: 24, categoryId: '27', desc: 'Zack D. Films style 3D medical & body explainers with x-ray organs' },
-  { id: 'inside-out', name: 'Inside Out 2D', voice: 'af_heart', voiceLabel: 'Heart (US Female · Warm Explainer)', speed: 1.04, music: 'bed', fps: 30, categoryId: '27', desc: 'Quick science & health explainers in clean 2D cutaways' },
-  { id: 'stick-story', name: 'Stick Story 2D', voice: 'am_puck', voiceLabel: 'Puck (US Male · Lively Survival)', speed: 1.05, music: 'bed', fps: 30, categoryId: '27', desc: 'Survival life hacks & "What would you do if..." scenarios with stick figures' },
-  { id: 'night-file', name: 'Night File 3D', voice: 'am_onyx', voiceLabel: 'Onyx (US Male · Dark Mystery)', speed: 0.95, music: 'tension', fps: 24, categoryId: '24', desc: 'Dark, eerie unsolved mysteries, crime stories & spooky history' },
-  { id: 'paper-atlas', name: 'Paper Atlas 2D', voice: 'bm_george', voiceLabel: 'George (UK Male · Documentary)', speed: 1.0, music: 'tension', fps: 30, categoryId: '27', desc: 'Historic battles, ancient empires & voyages on animated paper maps' },
+  { id: 'tall-tale', name: 'Tall Tale 3D', voice: 'am_michael', voiceLabel: 'Michael (US Male · Storyteller)', speed: 1.0, music: 'bounce', fps: 30, categoryId: '23', desc: 'Polished 60s 3D cartoon mini-movies with expressive characters, natural dialogue & clever twists' },
+  { id: 'deep-dive', name: 'Deep Dive 3D', voice: 'am_fenrir', voiceLabel: 'Fenrir (US Male · Dramatic Narrator)', speed: 0.99, music: 'tension', fps: 24, categoryId: '24', desc: '60s 3D character suspense & unexpected discovery mini-movies with cinematic close-ups' },
+  { id: 'inside-out', name: 'Inside Out 2D', voice: 'af_heart', voiceLabel: 'Heart (US Female · Warm Storyteller)', speed: 1.0, music: 'bed', fps: 30, categoryId: '24', desc: 'Vibrant 60s 2D animated character mini-movies with visual gags & heartfelt twists' },
+  { id: 'stick-story', name: 'Stick Story 2D', voice: 'am_puck', voiceLabel: 'Puck (US Male · Comedy Storyteller)', speed: 1.0, music: 'bed', fps: 30, categoryId: '23', desc: 'Lively 60s animated comedy & clever problem-solving stories with expressive characters' },
+  { id: 'night-file', name: 'Night File 3D', voice: 'am_onyx', voiceLabel: 'Onyx (US Male · Mystery Narrator)', speed: 0.95, music: 'tension', fps: 24, categoryId: '24', desc: 'Cinematic 60s 3D mystery & suspense mini-movies with gripping twists' },
+  { id: 'paper-atlas', name: 'Paper Atlas 2D', voice: 'bm_george', voiceLabel: 'George (UK Male · Storybook)', speed: 0.98, music: 'tension', fps: 30, categoryId: '24', desc: 'Crafted 60s cut-paper animated mini-movies across richly lit worlds & surprising payoffs' },
 ];
 
 export const DEFAULT_SETTINGS = {
@@ -55,17 +55,17 @@ export const DEFAULT_SETTINGS = {
   autoPost: true,            // Post immediately without manual approval once YouTube is connected
   requireApproval: false,    // Explicitly no approval required
   strictUnique: true,        // NEVER repeat or recycle any previous story
-  styleOrderMode: 'shuffle', // 'shuffle' (balanced Fisher-Yates shuffle across all 6 styles, never back-to-back) | 'sequential'
+  styleOrderMode: 'shuffle', // 'shuffle' (balanced Fisher-Yates shuffle across enabled styles, never back-to-back) | 'sequential'
   intervalMinutes: 120,      // Default: 1 Short every 2 hours (configurable to 72m for 20/day)
   dailyLimit: 12,            // Configurable: 6, 12, or 20/day
   privacyStatus: 'public',   // public | unlisted | private
-  enabledStyles: ALL_STYLES.map((s) => s.id),
+  enabledStyles: ['tall-tale'], // Matches reference video's 3D animated cartoon mini-movie presentation by default (all 6 styles still toggleable in Dashboard)
   ollamaUrl: process.env.OLLAMA_URL || 'http://127.0.0.1:11434',
   ollamaModel: process.env.OLLAMA_MODEL || 'llama3.2',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   geminiModel: process.env.GEMINI_MODEL || 'gemini-flash-lite-latest',
   storySource: 'auto',       // auto (Ollama -> Gemini -> Unused Bank) | ollama | gemini | bank
-  nicheTopics: 'funny true stories & heists, Zack D. Films body & medical what-ifs, 2D science & health cutaways, survival life hacks, dark unsolved mysteries, historic battles & ancient empires',
+  nicheTopics: 'original 60-second animated mini-movies: mystery, situational comedy, suspense, heartfelt twists, unexpected discoveries, clever problem-solving, friendship, family, workplace chaos, secret kindness',
   uploadThumbnail: true,     // Uploads 9:16 vertical 1080x1920 cover.jpg via thumbnails.set AFTER YouTube finishes processing the Short
   bakeVerticalCover: true,   // Also prepends 0.20s of 1080x1920 cover.jpg on frame 0 as a mobile-app fallback
   ntfyTopic: process.env.NTFY_TOPIC || 'storybyte-boss-701927', // Instant $0 phone push alert topic (ntfy app)

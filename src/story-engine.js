@@ -1,11 +1,26 @@
-// Strict Zero-Repeat Story Engine:
-// Priority in 'auto' mode: Local Ollama -> Free Cloud Gemini API -> Unused Verified 24-Story Bank.
-// NEVER repeats or recycles a previously used story or overlapping topic!
+// 60-Second Animated Mini-Movie Story Engine + Strict Quality Control & Concept Dedup
+// Completely replaces legacy 30s trivia/factoid prompts with original, character-driven 60-second
+// animated mini-movies crafted for international audiences (US, UK, Canada, Australia).
+// Priority in 'auto' mode: Local Ollama -> Free Cloud Gemini API -> Unused Verified Bank.
 import crypto from 'node:crypto';
 import { ALL_STYLES } from './config.js';
-import { addLog, getState, isStoryDuplicate } from './store.js';
+import { addLog, getState, isStoryDuplicate, nextGenreId } from './store.js';
 import { STORY_BANK } from './story-bank.js';
-import { VIRAL_TOPICS } from './viral-topics.js';
+
+export const MINI_MOVIE_GENRES = [
+  { id: 'mystery', label: 'Everyday Mystery', desc: 'An ordinary object, note, or strange behavior reveals a clever hidden mystery.' },
+  { id: 'comedy', label: 'Situational Comedy', desc: 'A tiny misunderstanding or awkward lie snowballs into hilarious chaos with a sharp punchline.' },
+  { id: 'suspense', label: 'High-Stakes Suspense', desc: 'A tense countdown or unexpected catch where quick thinking changes everything.' },
+  { id: 'emotional', label: 'Heartfelt Twist', desc: 'A seemingly cold or frustrating moment flips into a deeply touching human reveal.' },
+  { id: 'unexpected-discovery', label: 'Unexpected Discovery', desc: 'Someone finds something strange hidden in a normal place and uncovers its wild origin.' },
+  { id: 'unusual-everyday', label: 'Bizarre Everyday Moment', desc: 'A relatable everyday errand (commute, cafe, gym, apartment) turns completely unpredictable.' },
+  { id: 'clever-problem-solving', label: 'Clever Outsmarting', desc: 'A character solves a stubborn rule, unfair trap, or impossible problem with pure wit.' },
+  { id: 'friendship', label: 'Friendship Test', desc: 'Two friends end up in an absurd dilemma that leads to a surprising bond or hilarious betrayal.' },
+  { id: 'family', label: 'Family Mix-Up', desc: 'A relatable parent, sibling, or grandparent secret leads to a delightful twist.' },
+  { id: 'workplace', label: 'Workplace Chaos', desc: 'An office, studio, delivery route, or restaurant shift goes sideways in the funniest or smartest way.' },
+  { id: 'unexpected-kindness', label: 'Secret Kindness', desc: 'What looks like trouble or a rude stranger turns out to be a brilliant secret act of kindness.' },
+  { id: 'unpredictable-interaction', label: 'Strangers Collide', desc: 'A 60-second conversation between two strangers takes two sharp turns nobody saw coming.' },
+];
 
 export async function checkOllamaStatus(ollamaUrl) {
   const base = (ollamaUrl || 'http://127.0.0.1:11434').replace(/\/+$/, '');
@@ -23,108 +38,229 @@ export async function checkOllamaStatus(ollamaUrl) {
   }
 }
 
+const VALID_SHOTS = ['wide', 'medium', 'closeup', 'reaction'];
+const VALID_ACTIONS = ['stand', 'walk', 'run', 'jump', 'point', 'wave', 'shrug', 'gasp'];
+const VALID_PATTERNS = ['plain', 'check', 'stripes', 'overalls', 'vest', 'apron'];
+const VALID_HATS = ['none', 'cap', 'bowler', 'boater', 'beanie', 'visor', 'tophat', 'bun', 'flower'];
+const VALID_NECKS = ['none', 'bowtie', 'tie', 'scarf', 'collar'];
+const VALID_EXTRAS = ['mustache', 'glasses', 'freckles', 'blush', 'pencil', 'monocle'];
+
 const STYLE_SCHEMAS = {
   'tall-tale': {
     scenes: ['street', 'office', 'gallery', 'meadow', 'sunset'],
-    moods: ['smug', 'happy', 'laugh', 'shock', 'worried', 'angry', 'proud', 'sly'],
+    moods: ['neutral', 'smug', 'happy', 'laugh', 'shock', 'worried', 'angry', 'sad', 'sly', 'proud', 'tired', 'dizzy'],
     props: ['dollarBill', 'stack', 'paper', 'key', 'ticket', 'book', 'cup', 'parcels', 'letters', 'rubberStamp', 'sign'],
-    angles: [
-      'crazy legal or business loophole someone exploited',
-      'audacious real-life heist or clever con artist trick',
-      'funny weird history event that actually happened',
-      'bizarre marketing stunt or billion-dollar accidental fortune',
-      'ordinary person who outsmarted a giant corporation or government',
-    ],
-    guidance: 'Tall Tale 3D (expressive 2D cartoon characters inside a bright 3D miniature world): A funny, clever, verified true story — crazy loopholes, heists, scams, or weird history. Hook in line 0 under 11 words. 7-9 short flowing lines (~95-115 words). End on a witty punchline.',
+    visualStyle: 'Colourful polished 3D miniature world with expressive cartoon characters, natural dialogue, eye contact, body language, and cinematic camera framing (wide, medium, closeup, reaction).',
   },
   'deep-dive': {
     scenes: ['kitchen', 'xray', 'vessel', 'vessel_dark', 'xray_alarm', 'heart', 'blackout', 'kitchen_end'],
-    moods: ['neutral'],
+    moods: ['neutral', 'shock', 'worried', 'happy', 'angry'],
     props: [],
-    angles: [
-      'what happens inside your body if you get stung by a bullet ant or venomous creature',
-      'what happens if you swallow something strange or hold a reflex too long',
-      'what happens inside your heart, lungs, or blood vessels under extreme stress or cold',
-      'what happens if you stay awake too long or drink too much energy drink',
-      'Zack D. Films style surprising medical or organ chain reaction inside the human body',
-    ],
-    guidance: 'Deep Dive 3D (Zack D. Films style 3D medical and body explainer with x-ray organs & blood vessels): A fascinating, scientifically accurate "What happens if...?" human body or medical chain-reaction explainer (no gore). Hook question in line 0. 7-8 flowing lines (~95-110 words). Include short 2-word uppercase pill labels.',
+    visualStyle: 'Polished 3D character storytelling blended with dramatic internal close-ups, reactions, and tension beats.',
   },
   'night-file': {
     scenes: ['cabin', 'walk', 'file', 'vanish', 'door', 'casewall'],
-    moods: ['neutral'],
+    moods: ['neutral', 'worried', 'shock', 'angry', 'sad'],
     props: [],
-    angles: [
-      'eerie real unsolved mystery or baffling historical disappearance',
-      'unexplained radio signal, ghost ship, or strange radar anomaly',
-      'famous cold case file or mysterious heist where the culprit vanished',
-      'spooky historical event or eerie abandoned place with real documented records',
-    ],
-    guidance: 'Night File 3D (dark, moody 3D mystery & case file): A real, respectful unsolved mystery, strange crime case file, unexplained signal, or spooky historical mystery (never accuse living people, no gore). Open with date + place in line 0. 5-7 calm, suspenseful lines (~80-100 words).',
+    visualStyle: 'Cinematic moody 3D mystery mini-movie across atmospheric corridors, moonlit exteriors, interiors, and case-wall reveals.',
   },
   'inside-out': {
     scenes: ['room', 'xray', 'macro', 'macro_burst', 'bounce', 'myth', 'stopwatch', 'warning', 'end'],
     moods: ['n', 'o', 'smile', 'smirk'],
     props: [],
-    angles: [
-      'everyday human body quirk explained with a quick 2D cutaway (hiccups, brain freeze, goosebumps, yawning)',
-      'popular health or food myth busted with clean science',
-      'surprising biology happening inside your stomach, joints, eyes, or ears right now',
-      'quick everyday physics or chemistry reaction inside your body',
-    ],
-    guidance: 'Inside Out 2D (clean 2D cutaways): A punchy, fast-paced science and health explainer that busts a myth or explains a weird body reaction in plain English. Hook question in line 0. 7-8 flowing lines (~90-110 words).',
+    visualStyle: 'Vibrant expressive 2D animated character mini-movie with dynamic cutaways, crisp visual gags, and punchy transitions.',
   },
   'stick-story': {
     scenes: ['night_living', 'night_kitchen', 'night_hall', 'counter', 'day_living'],
     moods: ['calm', 'happy', 'worried', 'scared', 'determined'],
     props: [],
-    angles: [
-      'what would you do if caught in a rip current, quicksand, or sudden flood',
-      'real survival life hack if your car brakes fail, car sinks, or you are stuck in an elevator',
-      'emergency home safety steps (grease fire, gas leak, power outage, choking alone)',
-      'outdoor survival rule (lightning storm, stray dog, bear encounter, extreme heat/cold)',
-    ],
-    guidance: 'Stick Story 2D (stick-figure survival guide): A practical, life-saving "What would you do if...?" survival life hack or emergency step-by-step guide with clear numbered steps (Step 1, Step 2, Step 3). Hook scenario in line 0. 6-7 crisp lines (~85-105 words).',
+    visualStyle: 'Expressive animated stick-character mini-movie with lively physical comedy, natural dialogue, and crisp illustrated rooms.',
   },
   'paper-atlas': {
-    scenes: ['map', 'hall', 'harbor', 'night_city', 'fire', 'timeline', 'seal'],
-    moods: ['neutral'],
+    scenes: ['map', 'hall', 'harbor', 'night_city', 'timeline', 'seal'],
+    moods: ['neutral', 'happy', 'shock', 'worried', 'proud'],
     props: [],
-    angles: [
-      'legendary historic battle won by a genius tactic or unexpected mistake',
-      'rise, secret trick, or sudden fall of an ancient empire',
-      'daring ocean voyage, lost expedition, or world-changing map discovery',
-      'wild turning point in world history that reshaped borders or trade routes',
-    ],
-    guidance: 'Paper Atlas 2D (animated cut-paper maps & gold date ribbons): A vivid, verified story of a historic battle, ancient empire, famous voyage, or world-changing historical twist (no graphic violence). Open with the year and hook in line 0. 6-7 storybook lines (~85-105 words).',
+    visualStyle: 'Crafted cut-paper storybook mini-movie with multiple animated characters, richly lit halls, harbors, and tactile reveals.',
   },
 };
 
-function sanitizeBlueprint(raw, styleId) {
+const BANNED_OPENER_RE = /^(hi\b|hey\b|hello\b|welcome\b|good morning|once upon a time|did you know|have you ever wondered|today we|in this video|let me tell you|imagine this)/i;
+const BANNED_TROPE_RE = /\b(lottery ticket|won the lottery|winning lottery|greedy shopkeeper|arrogant billionaire|rich man mocked|poor beggar|instant karma|revenge on (his|her|their) boss)\b/i;
+
+const NAME_POOL = [
+  'Toby', 'Hannah', 'Marcus', 'Chloe', 'Devon', 'Nora', 'Owen', 'Tessa', 'Felix', 'Ruby',
+  'Caleb', 'Clara', 'Simon', 'Sadie', 'Grant', 'Wendy', 'Oscar', 'Fiona', 'Brett', 'Layla',
+  'Hugo', 'Holly', 'Colin', 'Penny', 'Reid', 'Zoey', 'Nathan', 'Maeve', 'Craig', 'Gemma',
+  'Trevor', 'Hazel', 'Wyatt', 'Freya', 'Vince', 'Phoebe', 'Dean', 'Sienna', 'Gavin', 'Poppy',
+];
+
+const SETTING_POOL = [
+  'a bustling weekend flea market',
+  'a sunny harbour commuter ferry',
+  'a retro neon bowling alley',
+  'a snowy mountain ski-lodge cafe',
+  'a rooftop community vegetable garden',
+  'a vintage vinyl record shop',
+  'a packed cross-country train dining car',
+  'a lively neighborhood dog park',
+  'a sunlit botanical glasshouse',
+  'a windy coastal lighthouse pier',
+  'a crowded airport baggage carousel',
+  'a bright corner laundromat',
+  'a suburban neighborhood hardware store',
+  'a colorful Saturday farmers market',
+  'a cozy trivia-night neighborhood pub',
+  'a quiet city library map archive',
+  'a crowded cinema popcorn lobby',
+  'a breezy seaside boardwalk ice-cream stand',
+  'a busy wedding-tailor alteration shop',
+  'a friendly neighborhood bicycle workshop',
+  'a warm early-morning sourdough bakery',
+  'a quirky secondhand bookstore',
+  'a sunny public swimming pool deck',
+  'a domed city planetarium',
+  'a messy community pottery studio',
+  'a glowing 24-hour highway diner',
+  'a snowy suburban cul-de-sac',
+  'a lively charity art auction hall',
+  'a colorful pet grooming salon',
+  'a sunny park chess pavilion',
+];
+
+function recentCharacterNames(storyMemory, limit = 16) {
+  const names = new Set();
+  for (const m of (storyMemory || []).slice(-limit)) {
+    for (const c of (m.characters || [])) {
+      const first = String(c || '').trim().split(/[\s(]/)[0].toLowerCase();
+      if (first.length >= 2) names.add(first);
+    }
+  }
+  return names;
+}
+
+function pickFreshCastAndSetting(storyMemory, attempt = 1) {
+  const usedNames = recentCharacterNames(storyMemory, 18);
+  const availNames = NAME_POOL.filter((n) => !usedNames.has(n.toLowerCase()));
+  const pool = availNames.length >= 2 ? availNames : NAME_POOL;
+  const i1 = Math.floor(Math.random() * pool.length);
+  const heroName = pool[i1];
+  const rest = pool.filter((n) => n !== heroName);
+  const partnerName = rest[Math.floor(Math.random() * rest.length)];
+
+  const recentSettings = new Set((storyMemory || []).slice(-18).map((m) => String(m.setting || '').toLowerCase()));
+  const availSettings = SETTING_POOL.filter((s) => {
+    const words = s.toLowerCase().split(/\s+/).filter((w) => w.length > 4);
+    return ![...recentSettings].some((rs) => words.some((w) => rs.includes(w)));
+  });
+  const sPool = availSettings.length ? availSettings : SETTING_POOL;
+  const settingSeed = sPool[(Math.floor(Math.random() * sPool.length) + attempt) % sPool.length];
+  return { heroName, partnerName, settingSeed, bannedNames: [...usedNames].slice(0, 16) };
+}
+
+function safeHex(val, fallback) {
+  return typeof val === 'string' && /^#[0-9a-fA-F]{6}$/.test(val.trim()) ? val.trim() : fallback;
+}
+
+function sanitizeCharacterLook(rawLook, fallback) {
+  const r = rawLook && typeof rawLook === 'object' ? rawLook : {};
+  return {
+    body: safeHex(r.body, fallback.body),
+    pattern: VALID_PATTERNS.includes(r.pattern) ? r.pattern : fallback.pattern,
+    patCol: safeHex(r.patCol, fallback.patCol),
+    hat: VALID_HATS.includes(r.hat) ? r.hat : fallback.hat,
+    hatCol: safeHex(r.hatCol, fallback.hatCol),
+    band: safeHex(r.band, fallback.band),
+    neck: VALID_NECKS.includes(r.neck) ? r.neck : fallback.neck,
+    neckCol: safeHex(r.neckCol, fallback.neckCol),
+    extra: Array.isArray(r.extra)
+      ? r.extra.filter((x) => VALID_EXTRAS.includes(x)).slice(0, 2)
+      : fallback.extra,
+  };
+}
+
+function defaultCast(seed) {
+  const heroChoices = [
+    { body: '#E8734A', pattern: 'plain', patCol: '#B8502E', hat: 'cap', hatCol: '#2E5A44', band: '#F2C230', neck: 'scarf', neckCol: '#F2C230', extra: ['glasses'] },
+    { body: '#3B78C4', pattern: 'stripes', patCol: '#234E8A', hat: 'beanie', hatCol: '#D84A3A', band: '#F5F1E8', neck: 'collar', neckCol: '#F5F1E8', extra: ['freckles'] },
+    { body: '#2E8B6E', pattern: 'overalls', patCol: '#1D5C48', hat: 'bun', hatCol: '#4A3123', band: '#F2C230', neck: 'none', neckCol: '#F2C230', extra: ['blush'] },
+    { body: '#C84B5A', pattern: 'check', patCol: '#8A2E3A', hat: 'none', hatCol: '#2A2638', band: '#F2C230', neck: 'scarf', neckCol: '#F2C230', extra: ['glasses'] },
+    { body: '#7C4DBC', pattern: 'vest', patCol: '#4F2E80', hat: 'boater', hatCol: '#E6C27A', band: '#C84B5A', neck: 'bowtie', neckCol: '#F2C230', extra: ['pencil'] },
+  ];
+  const partnerChoices = [
+    { body: '#4A5D7A', pattern: 'vest', patCol: '#2E3A4E', hat: 'bowler', hatCol: '#2A2638', band: '#B5372E', neck: 'tie', neckCol: '#B5372E', extra: ['mustache'] },
+    { body: '#D48C3B', pattern: 'apron', patCol: '#F4EFE4', hat: 'flower', hatCol: '#E85A4F', band: '#F2C230', neck: 'collar', neckCol: '#FFFFFF', extra: ['blush'] },
+    { body: '#3A7A68', pattern: 'check', patCol: '#234E42', hat: 'visor', hatCol: '#243B55', band: '#F2C230', neck: 'none', neckCol: '#F2C230', extra: ['glasses'] },
+    { body: '#9B4D6B', pattern: 'plain', patCol: '#6E3249', hat: 'bun', hatCol: '#2C221E', band: '#F2C230', neck: 'scarf', neckCol: '#4FD1E8', extra: ['freckles'] },
+  ];
+  return {
+    hero: heroChoices[seed % heroChoices.length],
+    partner: partnerChoices[(seed >> 2) % partnerChoices.length],
+    extra: { body: '#3B384A', pattern: 'vest', patCol: '#252230', hat: 'tophat', hatCol: '#252230', band: '#C9A13B', neck: 'bowtie', neckCol: '#D8343F', extra: ['monocle', 'mustache'] },
+  };
+}
+
+function countWords(lines) {
+  return lines.reduce((sum, ln) => sum + String(ln.text || '').trim().split(/\s+/).filter(Boolean).length, 0);
+}
+
+function sanitizeBlueprint(raw, styleId, genreObj = null) {
   const styleMeta = ALL_STYLES.find((s) => s.id === styleId) || ALL_STYLES[0];
   const schema = STYLE_SCHEMAS[styleId] || STYLE_SCHEMAS['tall-tale'];
   if (!raw || !Array.isArray(raw.lines) || raw.lines.length < 4) {
     throw new Error('Story blueprint missing valid lines array.');
   }
 
-  let prevScene = '';
+  const title = String(raw.title || 'Unexpected Turn').replace(/[\r\n]+/g, ' ').trim().slice(0, 75);
+  const seed = Math.abs(crypto.createHash('sha1').update(title).digest().readInt32BE(0));
+  const defaults = defaultCast(seed);
+
+  const rawChars = raw.characters && typeof raw.characters === 'object' ? raw.characters : {};
+  const characters = {
+    hero: {
+      name: String(rawChars.hero?.name || 'Sam').slice(0, 22),
+      role: String(rawChars.hero?.role || 'protagonist').slice(0, 32),
+      personality: String(rawChars.hero?.personality || 'quick-witted, expressive').slice(0, 50),
+      look: sanitizeCharacterLook(rawChars.hero?.look, defaults.hero),
+    },
+    partner: {
+      name: String(rawChars.partner?.name || 'Alex').slice(0, 22),
+      role: String(rawChars.partner?.role || 'foil').slice(0, 32),
+      personality: String(rawChars.partner?.personality || 'skeptical, reactive').slice(0, 50),
+      look: sanitizeCharacterLook(rawChars.partner?.look, defaults.partner),
+    },
+    extra: {
+      name: String(rawChars.extra?.name || 'Jordan').slice(0, 22),
+      role: String(rawChars.extra?.role || 'bystander').slice(0, 32),
+      personality: String(rawChars.extra?.personality || 'observant').slice(0, 50),
+      look: sanitizeCharacterLook(rawChars.extra?.look, defaults.extra),
+    },
+  };
+
+  let prevShot = '';
   const lines = raw.lines
-    .slice(0, 12)
+    .slice(0, 18)
     .map((ln, idx) => {
       const text = String(ln.text || '').replace(/\s+/g, ' ').trim();
       if (!text) return null;
-      let scene = schema.scenes.includes(ln.scene) ? ln.scene : schema.scenes[idx % schema.scenes.length];
-      // Prevent static visuals: never repeat the exact same scene twice in a row!
-      if (scene === prevScene && schema.scenes.length > 1) {
-        const alts = schema.scenes.filter((s) => s !== prevScene);
-        scene = alts[(idx + text.length) % alts.length];
+      const scene = schema.scenes.includes(ln.scene) ? ln.scene : schema.scenes[Math.floor(idx / 3) % schema.scenes.length];
+      let shot = VALID_SHOTS.includes(ln.shot) ? ln.shot : VALID_SHOTS[idx % VALID_SHOTS.length];
+      if (shot === prevShot && idx > 0) {
+        shot = VALID_SHOTS[(VALID_SHOTS.indexOf(shot) + 1) % VALID_SHOTS.length];
       }
-      prevScene = scene;
+      prevShot = shot;
+      const speaker = ['narrator', 'hero', 'partner', 'extra'].includes(ln.speaker) ? ln.speaker : (idx % 3 === 1 ? 'hero' : idx % 3 === 2 ? 'partner' : 'narrator');
       const mood = schema.moods.includes(ln.mood) ? ln.mood : schema.moods[0];
+      const partnerMood = schema.moods.includes(ln.partnerMood) ? ln.partnerMood : (mood === 'smug' ? 'shock' : mood === 'angry' ? 'worried' : 'neutral');
+      const action = VALID_ACTIONS.includes(ln.action) ? ln.action : (idx === 0 ? 'gasp' : 'stand');
+
       const out = {
         text,
+        speaker,
         scene,
+        shot,
         mood,
+        partnerMood,
+        action,
         sfx: ln.sfx || (idx === 0 ? 'ding' : idx === raw.lines.length - 1 ? 'stamp' : 'pop'),
       };
       if (ln.caps && typeof ln.caps === 'string') out.caps = ln.caps.trim();
@@ -158,96 +294,216 @@ function sanitizeBlueprint(raw, styleId) {
 
   if (lines.length < 4) throw new Error('Too few non-empty lines after sanitization.');
 
-  const title = String(raw.title || 'Unbelievable True Story').replace(/[\r\n]+/g, ' ').trim().slice(0, 90);
-  const hookText = String(raw.hookText || title.split(' ').slice(0, 3).join(' ')).toUpperCase().slice(0, 20);
-  const rawDesc = String(raw.description || `${title} — watch till the end!`).trim();
-  const description = rawDesc.includes('#shorts') ? rawDesc : `${rawDesc}\n\n#shorts`;
+  const hookText = String(raw.hookText || title.split(' ').slice(0, 3).join(' ')).toUpperCase().slice(0, 22);
+  const rawDesc = String(raw.description || `${title} — watch till the twist!`).trim();
+  const description = /#shorts\b/i.test(rawDesc) ? rawDesc : `${rawDesc}\n\n#Shorts`;
   const tags = Array.isArray(raw.tags) && raw.tags.length
     ? raw.tags.map((t) => String(t).replace(/^#/, '').trim()).filter(Boolean).slice(0, 10)
-    : ['shorts', styleId.replace('-', ''), 'facts', 'truestory', 'viral'];
-  const key = raw.key || `ai-${crypto.createHash('sha1').update(title.toLowerCase()).digest('hex').slice(0, 12)}`;
+    : ['shorts', 'animatedstory', 'storytime', 'plottwist', 'cartoon', 'viral'];
+
+  const summary = String(raw.summary || raw.description || title).slice(0, 260);
+  const setting = String(raw.setting || lines[0].scene || 'city street').slice(0, 120);
+  const centralConflict = String(raw.centralConflict || raw.conflict || '').slice(0, 220);
+  const mainEvents = Array.isArray(raw.mainEvents) ? raw.mainEvents.slice(0, 6).map((x) => String(x).slice(0, 140)) : [];
+  const twist = String(raw.twist || '').slice(0, 200);
+  const ending = String(raw.ending || lines[lines.length - 1]?.text || '').slice(0, 200);
+  const genre = String(raw.genre || genreObj?.id || 'comedy').slice(0, 32);
+  const conceptFingerprint = String(raw.conceptFingerprint || `${genre} ${setting} ${centralConflict} ${twist}`).slice(0, 220);
+  const key = raw.key || `mm-${crypto.createHash('sha1').update(`${title.toLowerCase()}|${conceptFingerprint.toLowerCase()}`).digest('hex').slice(0, 12)}`;
 
   return {
     key,
     style: styleId,
+    genre,
     title,
     hookText,
+    summary,
+    setting,
+    centralConflict,
+    mainEvents,
+    twist,
+    ending,
+    conceptFingerprint,
+    characters,
+    mainCharacters: [
+      `${characters.hero.name} (${characters.hero.role})`,
+      `${characters.partner.name} (${characters.partner.role})`,
+      ...(rawChars.extra?.name ? [`${characters.extra.name} (${characters.extra.role})`] : []),
+    ],
     description,
     tags,
     voice: styleMeta.voice,
     speed: styleMeta.speed,
     music: styleMeta.music,
     categoryId: String(raw.categoryId || styleMeta.categoryId),
-    sources: Array.isArray(raw.sources) && raw.sources.length ? raw.sources : ['AI-generated story'],
+    sources: Array.isArray(raw.sources) && raw.sources.length ? raw.sources : ['Original animated mini-movie'],
+    wordCount: countWords(lines),
+    targetDurationSec: 60,
     lines,
   };
 }
 
-function premiseKey(premise) {
-  return 'vp-' + crypto.createHash('sha1').update(String(premise)).digest('hex').slice(0, 10);
+/**
+ * Quality Control Gate evaluated BEFORE accepting any generated 60-second mini-movie.
+ * Rejects weak openings, short/padded scripts, repetitive clichés, flat visuals, or concept duplicates.
+ */
+export function evaluateStoryQuality(story) {
+  const issues = [];
+  if (!story || !Array.isArray(story.lines)) return { ok: false, issues: ['Missing story lines'] };
+
+  const words = countWords(story.lines);
+  if (words < 122 || words > 172) {
+    issues.push(`Word count ${words} outside 60-second target (122-172 words)`);
+  }
+  if (story.lines.length < 10) {
+    issues.push(`Only ${story.lines.length} beats (need at least 10 beats for a dynamic 60s mini-movie)`);
+  }
+
+  const hookLine = String(story.lines[0]?.text || '').trim();
+  const hookWords = hookLine.split(/\s+/).filter(Boolean).length;
+  if (!hookLine || hookWords > 15) {
+    issues.push(`Opening hook too long (${hookWords} words; keep 0-2s hook punchy)`);
+  }
+  if (BANNED_OPENER_RE.test(hookLine)) {
+    issues.push(`Banned boring opening phrase: "${hookLine}"`);
+  }
+
+  const fullText = [story.title, story.summary, story.centralConflict, story.twist, ...story.lines.map((l) => l.text)].join(' ');
+  if (BANNED_TROPE_RE.test(fullText)) {
+    issues.push('Contains banned repetitive cliché trope (lottery/greedy shopkeeper/rich-vs-poor/revenge)');
+  }
+
+  const st = getState();
+  const recent6Names = recentCharacterNames(st.storyMemory, 6);
+  const heroFirst = String(story.characters?.hero?.name || '').trim().split(/\s+/)[0].toLowerCase();
+  const partnerFirst = String(story.characters?.partner?.name || '').trim().split(/\s+/)[0].toLowerCase();
+  if (heroFirst && recent6Names.has(heroFirst)) {
+    issues.push(`Hero name "${story.characters.hero.name}" was already used recently`);
+  }
+  if (partnerFirst && recent6Names.has(partnerFirst)) {
+    issues.push(`Partner name "${story.characters.partner.name}" was already used recently`);
+  }
+
+  const distinctShots = new Set(story.lines.map((l) => l.shot)).size;
+  if (distinctShots < 2) issues.push('Needs varied camera framing (wide, medium, closeup, reaction)');
+
+  const distinctMoods = new Set(story.lines.map((l) => l.mood)).size;
+  if (distinctMoods < 2) issues.push('Characters need expressive emotional variety across scenes');
+
+  if (!story.summary || !story.centralConflict || !story.twist || !story.ending) {
+    issues.push('Missing structured plot metadata (summary, centralConflict, twist, ending)');
+  }
+
+  if (isStoryDuplicate(story)) {
+    issues.push(`Concept or title too similar to a previously stored story ("${story.title}")`);
+  }
+
+  return { ok: issues.length === 0, issues, wordCount: words };
 }
 
-function pickFreshViralTopic(styleId, usedTitles) {
-  const pool = VIRAL_TOPICS[styleId] || [];
-  const unused = pool.filter((premise) => {
-    const pk = premiseKey(premise);
-    if (isStoryDuplicate(pk, premise)) return false;
-    return !usedTitles.some((t) => {
-      const a = premise.toLowerCase();
-      const words = String(t || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 4);
-      if (words.length < 2) return false;
-      const hits = words.filter((w) => a.includes(w)).length;
-      return hits / words.length >= 0.55;
-    });
-  });
-  if (!unused.length) return null;
-  const text = unused[Math.floor(Math.random() * unused.length)];
-  return { key: premiseKey(text), text };
-}
-
-function buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt = 1, curatedPremise = null) {
+function buildMiniMoviePrompt(styleId, genreObj, storyMemory, usedTitles, attempt = 1) {
   const schema = STYLE_SCHEMAS[styleId] || STYLE_SCHEMAS['tall-tale'];
-  const recentUsed = usedTitles.slice(-80).join(' | ');
-  const angles = schema.angles || ['unusual world history', 'human body surprise', 'clever real-world loophole'];
-  const randomAngle = angles[Math.floor(Math.random() * angles.length)];
+  const { heroName, partnerName, settingSeed, bannedNames } = pickFreshCastAndSetting(storyMemory, attempt);
+  const memoryBlock = (storyMemory || []).slice(-35).map((m) =>
+    `- "${m.title}" [${m.genre || 'story'} @ ${m.setting || 'unknown'}]: ${m.conflict || m.summary} | Twist: ${m.twist || m.ending}`,
+  ).join('\n');
+  const titleBlock = (usedTitles || []).slice(-60).join(' | ');
 
-  const premiseBlock = curatedPremise
-    ? `REQUIRED VIRAL STORY PREMISE (turn THIS exact high-stakes true story/fact into an insanely gripping Short):\n"${curatedPremise}"`
-    : `Pick ONE jaw-dropping, ultra-specific, REAL high-stakes topic matching: ${randomAngle} (seed #${attempt}-${Date.now() % 997}).\nBANNED BORING TOPICS: NEVER write dull school-textbook PSAs, vague generic advice ("what happens if you swear", "gas leak safety", "drink water"), or generic unnamed stories. MUST include real names, crazy numbers, or extreme physical/emotional stakes!`;
+  return `You are the showrunner and writer of a viral 60-second animated cartoon mini-movie studio (think snappy, colourful 3D cartoon storytelling with witty narration, hilarious deadpan character dialogue, clever visual gags, and jaw-dropping double twists).
+Create ONE 100% ORIGINAL, genuinely funny, gripping, or heartwarming 60-SECOND animated mini-movie for international viewers (US, UK, Canada, Australia).
 
-  return `You are the lead scriptwriter for a 50-million-view YouTube Shorts channel (Zack D. Films / Johnny Harris / Fern / Brew style).
-Write ONE insanely gripping, binge-worthy 26-to-33-second Short in style "${styleId}".
-Style look & tone: ${schema.guidance}
+Visual presentation: ${schema.visualStyle}
+Assigned Genre for this episode: ${genreObj.label} — ${genreObj.desc}
+Fresh Setting Inspiration (build an original plot here): ${settingSeed}
+Fresh Unused Lead Names (use these two names so characters never repeat): Hero = "${heroName}", Partner = "${partnerName}"
+Recently used character names (DO NOT REUSE): ${bannedNames.join(', ') || 'none'}
+Fresh creative seed: #${attempt}-${Date.now() % 9973}
 
-${premiseBlock}
+PREVIOUSLY CREATED STORIES (STRICTLY DO NOT REPEAT OR REWORD ANY CONCEPT, MOTIF, OBJECT, SETTING, OR TWIST):
+${memoryBlock || '(none yet)'}
+Previous titles: ${titleBlock || '(none yet)'}
 
-STRICT UNIQUENESS RULE: Do NOT repeat, rephrase, or overlap ANY of these already-used stories:
-${recentUsed || '(none yet)'}
-
-HOW TO MAKE THIS SCRIPT IMPOSSIBLE TO SWIPE AWAY (FOLLOW EVERY RULE):
-1. BRUTAL 0-2s HOOK (line 0): Max 9 words! Drop the viewer STRAIGHT into an everyday hidden object, a shocking paradox, or a high-stakes countdown.
-   - GREAT examples: "That tiny pinhole in your plane window saves your life." / "He raised a price from forty to eighty and sold out." / "On Monday, he had seventy two hours left." / "One sign tricked an entire town."
-   - BANNED boring openers: NEVER start with "Did you know", "Have you ever wondered", "Today we", "In this video", "Imagine", or generic definitions!
-2. PUNCHY, SHORT CINEMATIC RHYTHM (Dex Explains / Hypothetically / Plizmo / Zack D. Films cadence): Write crisp, punchy, dramatic sentences with tension and irony — like telling your friend the wildest twist over coffee. Include exact numbers, countdown beats ("Monday... By Wednesday..."), or hidden-psychology reveals. Zero textbook fluff!
-3. FAST MICRO-BEATS (7-10 short lines, 80-105 words total): Every line is 7-12 punchy spoken words so the visual scene cuts every 2.5 to 3.5 seconds!
-4. MID-VIDEO PLOT TWIST / ESCALATION (line 3 or 4): Hit a sharp turn ("The boss laughed. Until Friday...", "Everyone thought it was a flaw—until...", "Then nobody noticed the one tiny catch...") right at the midpoint!
-5. MIC-DROP PAYOFF ENDING (last line): End on a clever irony, mind-blowing reveal, or reverse-psychology punchline that makes viewers replay or comment immediately. ZERO "like and subscribe" or "stay safe" clichés.
-6. Write numbers as spoken English words ONLY inside "lines[].text" (for crisp TTS voiceover). Inside "title" and "hookText", ALWAYS use short punchy digits like "$125M", "38 MIN", "1971" (never spell out long numbers in title or hookText, and keep hookText strictly 2-3 short words under 18 chars!).
-7. Change "scene" on every line so the animation cuts dynamically every 2.5 seconds.
-8. Return ONLY raw valid JSON (no markdown fences):
+MANDATORY STORYTELLING & 60-SECOND STRUCTURE RULES:
+1. EXACT 60-SECOND LENGTH: Write 13 to 15 tightly paced beats totaling **142 to 158 spoken words** (natural conversational English, NOT rushed, NOT padded). Every single line must push the story or comedy forward with zero filler!
+2. 0–2s SCROLL-STOPPING HOOK (Beat 1): Start IMMEDIATELY inside a wild discovery, outrageous mistake, sneaky scheme, or bizarre confrontation (max 11 words). NEVER start with greetings, "Once upon a time", "Did you know", "In this video", or slow background setup.
+3. 60-SECOND MINI-MOVIE ARC (keep viewers hooked every 5-8 seconds, and vary plot shapes so no two episodes feel templated!):
+   - Beat 1 (0-2s): Explosive visual + spoken hook that raises an immediate question.
+   - Beats 2-4 (3-15s): Establish the colorful setting, expressive characters, and why this situation is wild or risky.
+   - Beats 5-7 (16-30s): Snappy character banter & conflict introducing surprising new information or a funny deadpan reaction.
+   - Beats 8-10 (31-45s): Unexpected escalation or clever complication — someone gets caught, doubles down, or spots a clue.
+   - Beats 11-13 (46-55s): The major reveal or clever turning point nobody saw coming.
+   - Beats 14-15 (56-60s): Memorable, clever, ironic, or heartfelt mic-drop payoff ending (NO "like and subscribe"!).
+4. NATURAL CHARACTER CONVERSATIONS & PERSONALITY:
+   - Use Hero ("${heroName}") and Partner ("${partnerName}") with distinct outfits, colors, hats/accessories, and personalities that STAY IDENTICAL across all scenes.
+   - Mix crisp, playful storytelling narration ("narrator") with snappy spoken dialogue ("hero", "partner") that sounds like real people reacting with wit, shock, or dry humor — zero robotic lines!
+   - Keep location continuity: stay in the same "scene" during a continuous conversation, and change "scene" only when the story genuinely moves locations!
+   - Vary "shot" cinematically: use "wide" to establish a location, "medium" for conversations, "closeup" for intense reveals, and "reaction" for funny/shocked facial expressions.
+5. STRICTLY BANNED BORING CLICHÉS & REPEATED MOTIFS:
+   - NEVER write lottery-ticket stories, greedy shopkeeper stories, rich-vs-poor moral lectures, generic revenge stories, school-textbook facts, or repeat ANY object/motif from the previous stories list above.
+   - NEVER rely on region-specific slang or local cultural references — keep situations universally relatable in the US, UK, Canada, and Australia.
+6. FORMATTING:
+   - Write all numbers in "lines[].text" as spoken English words (e.g., "forty dollars", "ten minutes") for clean TTS voiceover.
+   - In "title" and "hookText", keep it punchy and under 54 chars / 2-3 words (short digits OK in title/hookText).
+   - Return ONLY raw valid JSON (no markdown code fences):
 {
-  "title": "Scroll-stopping viral Shorts title under 52 chars (punchy, specific, NOT textbook)",
-  "hookText": "2-3 WORD SHOCKING HOOK",
-  "description": "2-sentence gripping description with a question to spark comments, ending with #shorts",
-  "tags": ["shorts", "tag2", "tag3", "tag4", "tag5", "tag6"],
-  "sources": ["Real source name"],
+  "title": "Curiosity-sparking mini-movie title under 54 chars",
+  "hookText": "2-3 WORD HOOK",
+  "genre": "${genreObj.id}",
+  "summary": "2-sentence summary of the full story and its payoff",
+  "setting": "Specific colorful primary location",
+  "centralConflict": "One clear sentence describing the core conflict",
+  "mainEvents": ["Event 1", "Event 2", "Event 3", "Event 4"],
+  "twist": "The unexpected reveal or turning point",
+  "ending": "The final satisfying payoff",
+  "conceptFingerprint": "6-10 lowercase keywords uniquely capturing this core story idea",
+  "description": "2 engaging sentences teasing the twist without spoiling it + a comment question + #Shorts",
+  "tags": ["shorts", "animatedstory", "storytime", "plottwist", "animation", "tag6"],
+  "characters": {
+    "hero": {
+      "name": "First name",
+      "role": "Short role (e.g. baker, dog walker, rookie intern)",
+      "personality": "2-3 personality traits",
+      "look": {
+        "body": "#HEX",
+        "pattern": "plain | check | stripes | overalls | vest | apron",
+        "patCol": "#HEX",
+        "hat": "none | cap | bowler | boater | beanie | visor | tophat | bun | flower",
+        "hatCol": "#HEX",
+        "band": "#HEX",
+        "neck": "none | bowtie | tie | scarf | collar",
+        "neckCol": "#HEX",
+        "extra": ["glasses or mustache or freckles or blush or pencil"]
+      }
+    },
+    "partner": {
+      "name": "First name",
+      "role": "Short role",
+      "personality": "2-3 personality traits",
+      "look": {
+        "body": "#HEX",
+        "pattern": "plain | check | stripes | overalls | vest | apron",
+        "patCol": "#HEX",
+        "hat": "none | cap | bowler | boater | beanie | visor | tophat | bun | flower",
+        "hatCol": "#HEX",
+        "band": "#HEX",
+        "neck": "none | bowtie | tie | scarf | collar",
+        "neckCol": "#HEX",
+        "extra": ["glasses or mustache or freckles or blush"]
+      }
+    }
+  },
   "lines": [
     {
-      "text": "Punchy spoken beat (7-11 words, numbers spelled out)",
+      "text": "Punchy spoken narration or natural character dialogue (8-12 words, numbers spelled out)",
+      "speaker": "narrator | hero | partner | extra",
       "scene": "one of: ${schema.scenes.join(' | ')}",
+      "shot": "wide | medium | closeup | reaction",
       "mood": "one of: ${schema.moods.join(' | ')}",
-      "badge": "OPTIONAL 1-2 WORD BOLD OVERLAY",
-      "badgeSub": "OPTIONAL SUBTEXT",
+      "partnerMood": "one of: ${schema.moods.join(' | ')}",
+      "action": "stand | walk | run | jump | point | wave | shrug | gasp",
+      "prop": "OPTIONAL one of: ${schema.props.join(' | ') || 'none'}",
+      "badge": "OPTIONAL 1-2 WORD OVERLAY ON KEY REVEALS ONLY",
+      "badgeSub": "OPTIONAL SHORT SUBTEXT",
       "badgeColor": "gold | green | red | cream",
       "pill": "OPTIONAL 2-WORD PILL",
       "sfx": "ding | pop | boing | stamp | slam | sparkle | thud | alarm | tock"
@@ -256,7 +512,7 @@ HOW TO MAKE THIS SCRIPT IMPOSSIBLE TO SWIPE AWAY (FOLLOW EVERY RULE):
 }`;
 }
 
-async function generateWithOllama(styleId, usedTitles, nicheTopics, ollamaUrl, ollamaModel, attempt, curatedPremise = null) {
+async function generateWithOllama(styleId, genreObj, storyMemory, usedTitles, ollamaUrl, ollamaModel, attempt) {
   const base = (ollamaUrl || 'http://127.0.0.1:11434').replace(/\/+$/, '');
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 90_000);
@@ -266,19 +522,19 @@ async function generateWithOllama(styleId, usedTitles, nicheTopics, ollamaUrl, o
     signal: ctrl.signal,
     body: JSON.stringify({
       model: ollamaModel || 'llama3.2',
-      prompt: buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt, curatedPremise),
+      prompt: buildMiniMoviePrompt(styleId, genreObj, storyMemory, usedTitles, attempt),
       format: 'json',
       stream: false,
-      options: { temperature: 0.9 },
+      options: { temperature: 0.92 },
     }),
   });
   clearTimeout(timer);
   if (!res.ok) throw new Error(`Ollama returned HTTP ${res.status}`);
   const data = await res.json();
-  return sanitizeBlueprint(JSON.parse(data.response), styleId);
+  return sanitizeBlueprint(JSON.parse(data.response), styleId, genreObj);
 }
 
-async function generateWithGemini(styleId, usedTitles, nicheTopics, apiKey, model, attempt, curatedPremise = null) {
+async function generateWithGemini(styleId, genreObj, storyMemory, usedTitles, apiKey, model, attempt) {
   const candidates = [...new Set([model || 'gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'])];
   let lastErr = null;
   for (const m of candidates) {
@@ -287,9 +543,9 @@ async function generateWithGemini(styleId, usedTitles, nicheTopics, apiKey, mode
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt, curatedPremise) }] }],
+        contents: [{ parts: [{ text: buildMiniMoviePrompt(styleId, genreObj, storyMemory, usedTitles, attempt) }] }],
         generationConfig: {
-          temperature: 0.9,
+          temperature: 0.95,
           responseMimeType: 'application/json',
         },
       }),
@@ -302,31 +558,37 @@ async function generateWithGemini(styleId, usedTitles, nicheTopics, apiKey, mode
     }
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const cleaned = text.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
-    return sanitizeBlueprint(JSON.parse(cleaned), styleId);
+    return sanitizeBlueprint(JSON.parse(cleaned), styleId, genreObj);
   }
   throw lastErr || new Error('All Gemini fallback models failed.');
 }
 
-export async function generateUniqueStory(styleId, { forceSource = null } = {}) {
+export async function generateUniqueStory(styleId, { forceSource = null, genre = null } = {}) {
   const st = getState();
   const usedTitles = [...new Set([...(st.usedTitles || []), ...st.jobs.map((j) => j.title).filter(Boolean)])];
+  const storyMemory = Array.isArray(st.storyMemory) ? st.storyMemory : [];
   const sourceMode = forceSource || st.settings.storySource || 'auto';
 
-  // 1. Try local Ollama (if enabled & running) — up to 3 attempts to guarantee 100% unique topic
+  const pickGenre = () => {
+    const gId = genre || nextGenreId(MINI_MOVIE_GENRES.map((g) => g.id));
+    return MINI_MOVIE_GENRES.find((g) => g.id === gId) || MINI_MOVIE_GENRES[0];
+  };
+
+  // 1. Try local Ollama (if enabled & running) with full Quality Control & Dedup Gate
   if (sourceMode === 'auto' || sourceMode === 'hybrid' || sourceMode === 'ollama') {
     const status = await checkOllamaStatus(st.settings.ollamaUrl);
     if (status.running && status.models.length > 0) {
       const model = status.models.includes(st.settings.ollamaModel) ? st.settings.ollamaModel : status.models[0];
-      for (let attempt = 1; attempt <= 3; attempt++) {
+      for (let attempt = 1; attempt <= 4; attempt++) {
         try {
-          const picked = pickFreshViralTopic(styleId, usedTitles);
-          addLog('INFO', `Generating unique "${styleId}" story via local Ollama (${model}, attempt ${attempt})...`);
-          const story = await generateWithOllama(styleId, usedTitles, st.settings.nicheTopics, st.settings.ollamaUrl, model, attempt, picked?.text || null);
-          if (picked?.key) story.key = picked.key;
-          if (!isStoryDuplicate(story.key, story.title)) {
+          const gObj = pickGenre();
+          addLog('INFO', `Generating 60s "${gObj.label}" mini-movie via local Ollama (${model}, attempt ${attempt})...`);
+          const story = await generateWithOllama(styleId, gObj, storyMemory, usedTitles, st.settings.ollamaUrl, model, attempt);
+          const qc = evaluateStoryQuality(story);
+          if (qc.ok) {
             return { story, generatedBy: `ollama:${model}` };
           }
-          addLog('WARN', `Ollama returned similar topic "${story.title}", retrying for a completely new story...`);
+          addLog('WARN', `QC rejected Ollama draft "${story.title}": ${qc.issues.join('; ')} — regenerating...`);
         } catch (err) {
           addLog('WARN', `Ollama attempt ${attempt} failed: ${err.message}`);
           break;
@@ -337,34 +599,45 @@ export async function generateUniqueStory(styleId, { forceSource = null } = {}) 
     }
   }
 
-  // 2. Try Free Cloud Gemini API (works 24/7 in Docker / GitHub Actions even when laptop is off!)
+  // 2. Try Free Cloud Gemini API (works 24/7 in GitHub Actions even when laptop is OFF!) with full QC Gate
   const gemKey = (st.settings.geminiApiKey || process.env.GEMINI_API_KEY || '').trim();
   if ((sourceMode === 'auto' || sourceMode === 'hybrid' || sourceMode === 'gemini') && gemKey) {
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    let bestFallback = null;
+    for (let attempt = 1; attempt <= 4; attempt++) {
       try {
-        const picked = pickFreshViralTopic(styleId, usedTitles);
-        addLog('INFO', `Generating unique "${styleId}" story via Gemini API (${st.settings.geminiModel}, attempt ${attempt}${picked ? ', curated viral premise' : ''})...`);
-        const story = await generateWithGemini(styleId, usedTitles, st.settings.nicheTopics, gemKey, st.settings.geminiModel, attempt, picked?.text || null);
-        if (picked?.key) story.key = picked.key;
-        if (!isStoryDuplicate(story.key, story.title)) {
+        const gObj = pickGenre();
+        addLog('INFO', `Generating 60s "${gObj.label}" mini-movie via Gemini API (${st.settings.geminiModel}, attempt ${attempt})...`);
+        const story = await generateWithGemini(styleId, gObj, storyMemory, usedTitles, gemKey, st.settings.geminiModel, attempt);
+        const qc = evaluateStoryQuality(story);
+        if (qc.ok) {
+          addLog('INFO', `QC PASSED (${qc.wordCount} words, ${story.lines.length} beats, genre=${story.genre}): "${story.title}"`);
           return { story, generatedBy: `gemini:${st.settings.geminiModel}` };
         }
-        addLog('WARN', `Gemini returned similar topic "${story.title}", retrying for a completely new story...`);
+        // Keep best non-duplicate candidate only if every issue was just mild word-count variance
+        const hardFail = qc.issues.some((i) => /duplicate|similar|banned|missing/i.test(i));
+        if (!hardFail && (!bestFallback || Math.abs(qc.wordCount - 136) < Math.abs(bestFallback.wordCount - 136))) {
+          bestFallback = story;
+        }
+        addLog('WARN', `QC rejected Gemini draft "${story.title}" (${qc.wordCount}w): ${qc.issues.join('; ')} — regenerating...`);
       } catch (err) {
         addLog('WARN', `Gemini attempt ${attempt} failed: ${err.message}`);
-        break;
+        if (attempt >= 2) break;
       }
+    }
+    if (bestFallback && !isStoryDuplicate(bestFallback)) {
+      addLog('WARN', `Using best validated non-duplicate draft (${bestFallback.wordCount} words): "${bestFallback.title}"`);
+      return { story: bestFallback, generatedBy: `gemini:${st.settings.geminiModel}` };
     }
   } else if (sourceMode === 'gemini') {
     throw new Error('Gemini API key is not configured.');
   }
 
-  // 3. Fallback to strictly unused stories from the verified 24-story bank (NEVER repeats!)
+  // 3. Fallback to strictly unused stories from the verified bank (NEVER repeats!)
   let pool = STORY_BANK.filter((s) => s.style === styleId && !isStoryDuplicate(s.key, s.title));
   if (!pool.length) pool = STORY_BANK.filter((s) => !isStoryDuplicate(s.key, s.title));
   if (!pool.length) {
     throw new Error(
-      'All 24 offline bank stories have already been used! To guarantee 100% unique stories forever, start local Ollama (ollama pull llama3.2) OR paste a free Gemini API key in Settings.',
+      'All offline bank stories have been used! To generate unlimited original 60s mini-movies, configure a free Gemini API key or start local Ollama.',
     );
   }
   const picked = pool[Math.floor(Math.random() * pool.length)];

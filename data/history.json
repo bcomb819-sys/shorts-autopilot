@@ -1,13 +1,21 @@
 {
   "styleCursor": 10,
-  "styleBag": [
-    "night-file",
-    "deep-dive",
-    "paper-atlas",
-    "stick-story",
-    "tall-tale"
+  "styleBag": [],
+  "lastStyleId": "night-file",
+  "lastGenre": "unpredictable-interaction",
+  "genreBag": [
+    "emotional",
+    "unusual-everyday",
+    "comedy",
+    "unexpected-discovery",
+    "workplace",
+    "clever-problem-solving",
+    "friendship",
+    "family",
+    "unexpected-kindness",
+    "suspense",
+    "mystery"
   ],
-  "lastStyleId": "inside-out",
   "usedStoryKeys": [
     "io-crack-knuckles",
     "tt-eiffel-twice",
@@ -21,7 +29,8 @@
     "ai-603ab1e9dfc5",
     "ai-c98cf304a937",
     "ai-630c1ec5baaa",
-    "vp-722e50aa27"
+    "vp-722e50aa27",
+    "mm-5caad091daaf"
   ],
   "usedTitles": [
     "The Con Man Who Sold the Eiffel Tower Twice",
@@ -35,6 +44,32 @@
     "How Salt Destroyed a Mighty Empire",
     "What To Do During a Gas Leak",
     "The Ghost Ship of the Open Atlantic",
-    "Why You Can't Tickle Yourself"
+    "Why You Can't Tickle Yourself",
+    "The Wrong Painting Worth Millions"
+  ],
+  "storyMemory": [
+    {
+      "id": "mm-5caad091daaf",
+      "title": "The Wrong Painting Worth Millions",
+      "genre": "unpredictable-interaction",
+      "summary": "An art critic argues with a stranger over a museum masterpiece, only to discover the painting is an accidental portrait of his own lost pet painted yesterday.",
+      "characters": [
+        "Barnaby (Art Critic)",
+        "Leo (Dog Owner)"
+      ],
+      "setting": "Sunny modern art gallery with colorful walls",
+      "conflict": "An aggressive art critic clashes with a casual gallery visitor over the meaning of a bizarre portrait.",
+      "events": [
+        "A grumpy art critic dismisses a chaotic modern painting in a gallery",
+        "A casual stranger casually defends the chaotic brushwork as pure genius",
+        "The critic leans in closer to inspect the wild swirling textures",
+        "They both realize the abstract masterpiece is actually a giant accident"
+      ],
+      "twist": "The museum masterpiece is not fine art at all, but a wet canvas left by a runaway dog yesterday morning.",
+      "ending": "The director rushes over with a blank check while the stunned owner whistles for his terrier.",
+      "fingerprint": "art critic gallery painting dog accident masterpiece modern art",
+      "style": "tall-tale",
+      "createdAt": "2026-11-28T14:24:52.336Z"
+    }
   ]
 }
