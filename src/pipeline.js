@@ -91,10 +91,10 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
     upsertJob({ id: jobId, status: 'voice', stage: 'Synthesizing local Kokoro AI voice (targeting exact 60s)...' });
     await runCmd(PYTHON_BIN, [path.join(SKILL_DIR, 'scripts', 'voice.py'), projDir], { cwd: projDir });
 
-    const TARGET_AUDIO_SEC = 59.55; // + 0.04s cover frame + <=0.41s clean final hold = EXACT 60.00s!
+    const TARGET_AUDIO_SEC = 58.95; // Leaves ~1.0s clean outro beat so the final ending line NEVER cuts off at 60.00s!
     let linesMeta = JSON.parse(fs.readFileSync(path.join(projDir, 'data', 'lines.json'), 'utf8'));
     let rawDur = Number(linesMeta.duration || 0);
-    if (rawDur > 0 && (rawDur < 57.5 || rawDur > 59.9)) {
+    for (let calPass = 1; calPass <= 2 && rawDur > 0 && (rawDur < 57.2 || rawDur > 59.65); calPass++) {
       const curScript = JSON.parse(fs.readFileSync(path.join(projDir, 'script.json'), 'utf8'));
       const lineCount = Math.max(1, (curScript.lines || []).length);
       const curSpeed = Number(curScript.speed || styleMeta.speed || 1.0);
@@ -106,30 +106,30 @@ export async function runShortPipeline({ style = null, upload = true, forceSourc
       let nextOutro = curScript.outro || 0.45;
       let nextLead = curScript.lead || 0.12;
 
-      if (rawDur > 59.9) {
-        // Trim gaps slightly first, then calibrate speed smoothly so zero words are ever cut off
-        nextGap = 0.09;
-        nextLead = 0.08;
-        nextOutro = 0.25;
+      if (rawDur > 59.65) {
+        // Trim gaps first, then smoothly speed up so the complete ending finishes cleanly BEFORE 60.00s (zero cutoff!)
+        nextGap = 0.08;
+        nextLead = 0.06;
+        nextOutro = 0.35;
         const availSpeech = TARGET_AUDIO_SEC - (nextLead + nextOutro + nextGap * Math.max(0, lineCount - 1));
-        nextSpeed = Math.min(1.24, Math.max(0.85, curSpeed * (speechOnly / Math.max(20, availSpeech))));
+        nextSpeed = Math.min(1.28, Math.max(0.85, curSpeed * (speechOnly / Math.max(20, availSpeech))));
       } else {
-        // Natural conversational pacing to fill ~59.3s smoothly without awkward silences
+        // Natural conversational pacing to fill ~58.95s smoothly without awkward silences
         const ratio = TARGET_AUDIO_SEC / rawDur;
         nextSpeed = Math.max(0.86, Math.min(1.08, curSpeed / Math.min(ratio, 1.18)));
         const estSpeech = speechOnly * (curSpeed / nextSpeed);
         const remaining = Math.max(1.2, TARGET_AUDIO_SEC - estSpeech - nextLead);
-        nextGap = Math.min(0.56, Math.max(0.16, (remaining - 0.8) / Math.max(1, lineCount)));
-        nextOutro = Math.min(2.0, Math.max(0.45, remaining - nextGap * Math.max(0, lineCount - 1)));
+        nextGap = Math.min(0.54, Math.max(0.15, (remaining - 0.85) / Math.max(1, lineCount)));
+        nextOutro = Math.min(1.8, Math.max(0.45, remaining - nextGap * Math.max(0, lineCount - 1)));
       }
 
       const calibrated = buildScriptJson(story, { speed: nextSpeed, gap: nextGap, lead: nextLead, outro: nextOutro, endGap: Math.min(0.45, nextGap) });
       fs.writeFileSync(path.join(projDir, 'script.json'), JSON.stringify(calibrated, null, 2));
-      addLog('INFO', `Calibrating voice pacing (${rawDur.toFixed(2)}s -> 60s target: speed=${calibrated.speed}x, gap=${calibrated.gap}s, outro=${calibrated.outro}s)...`, jobId);
+      addLog('INFO', `Calibrating voice pacing pass ${calPass} (${rawDur.toFixed(2)}s -> 60s target: speed=${calibrated.speed}x, gap=${calibrated.gap}s, outro=${calibrated.outro}s)...`, jobId);
       await runCmd(PYTHON_BIN, [path.join(SKILL_DIR, 'scripts', 'voice.py'), projDir], { cwd: projDir });
       linesMeta = JSON.parse(fs.readFileSync(path.join(projDir, 'data', 'lines.json'), 'utf8'));
       rawDur = Number(linesMeta.duration || 0);
-      addLog('INFO', `Calibrated voice duration: ${rawDur.toFixed(2)}s`, jobId);
+      addLog('INFO', `Calibrated voice duration (pass ${calPass}): ${rawDur.toFixed(2)}s`, jobId);
     }
 
     // 5. Local Whisper word-level subtitle alignment

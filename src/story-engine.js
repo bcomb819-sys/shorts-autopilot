@@ -86,6 +86,7 @@ const STYLE_SCHEMAS = {
 
 const BANNED_OPENER_RE = /^(hi\b|hey\b|hello\b|welcome\b|good morning|once upon a time|did you know|have you ever wondered|today we|in this video|let me tell you|imagine this)/i;
 const BANNED_TROPE_RE = /\b(lottery ticket|won the lottery|winning lottery|greedy shopkeeper|arrogant billionaire|rich man mocked|poor beggar|instant karma|revenge on (his|her|their) boss)\b/i;
+const BANNED_CLIFFHANGER_RE = /\b(to be continued|part two|part 2|stay tuned|find out next|what happens next|subscribe for|follow for part|comment what you think happens)\b|\.\.\.\s*$/i;
 
 const NAME_POOL = [
   'Toby', 'Hannah', 'Marcus', 'Chloe', 'Devon', 'Nora', 'Owen', 'Tessa', 'Felix', 'Ruby',
@@ -394,6 +395,19 @@ export function evaluateStoryQuality(story) {
     issues.push('Missing structured plot metadata (summary, centralConflict, twist, ending)');
   }
 
+  // Strict COMPLETE-ENDING gate: every story MUST have a clear, resolved ending (zero cliffhangers!)
+  const lastLine = String(story.lines[story.lines.length - 1]?.text || '').trim();
+  const lastWords = lastLine.split(/\s+/).filter(Boolean).length;
+  if (!lastLine || lastWords < 4) {
+    issues.push('Final ending line is missing or too abrupt (must deliver a complete conclusion)');
+  }
+  if (BANNED_CLIFFHANGER_RE.test(lastLine) || BANNED_CLIFFHANGER_RE.test(String(story.ending || ''))) {
+    issues.push(`Ending contains a cliffhanger or "to be continued" phrase: "${lastLine}"`);
+  }
+  if (/\?\s*$/.test(lastLine)) {
+    issues.push(`Ending stops on an unanswered question instead of a satisfying conclusion: "${lastLine}"`);
+  }
+
   if (isStoryDuplicate(story)) {
     issues.push(`Concept or title too similar to a previously stored story ("${story.title}")`);
   }
@@ -432,7 +446,7 @@ MANDATORY STORYTELLING & 60-SECOND STRUCTURE RULES:
    - Beats 5-7 (16-30s): Snappy character banter & conflict introducing surprising new information or a funny deadpan reaction.
    - Beats 8-10 (31-45s): Unexpected escalation or clever complication — someone gets caught, doubles down, or spots a clue.
    - Beats 11-13 (46-55s): The major reveal or clever turning point nobody saw coming.
-   - Beats 14-15 (56-60s): Memorable, clever, ironic, or heartfelt mic-drop payoff ending (NO "like and subscribe"!).
+   - Beats 14-15 (56-60s): COMPLETE, SATISFYING ENDING — fully resolve the conflict on screen with a punchy final payoff, clear conclusion, and definitive final line (STRICTLY NO cliffhangers, NO "to be continued", NO unanswered question at the end, and NO "like and subscribe"!).
 4. NATURAL CHARACTER CONVERSATIONS & PERSONALITY:
    - Use Hero ("${heroName}") and Partner ("${partnerName}") with distinct outfits, colors, hats/accessories, and personalities that STAY IDENTICAL across all scenes.
    - Mix crisp, playful storytelling narration ("narrator") with snappy spoken dialogue ("hero", "partner") that sounds like real people reacting with wit, shock, or dry humor — zero robotic lines!
@@ -614,8 +628,8 @@ export async function generateUniqueStory(styleId, { forceSource = null, genre =
           return { story, generatedBy: `gemini:${st.settings.geminiModel}` };
         }
         // Keep best non-duplicate candidate only if every issue was just mild word-count variance
-        const hardFail = qc.issues.some((i) => /duplicate|similar|banned|missing/i.test(i));
-        if (!hardFail && (!bestFallback || Math.abs(qc.wordCount - 136) < Math.abs(bestFallback.wordCount - 136))) {
+        const hardFail = qc.issues.some((i) => /duplicate|similar|banned|missing|cliffhanger|ending|question|already used/i.test(i));
+        if (!hardFail && (!bestFallback || Math.abs(qc.wordCount - 145) < Math.abs(bestFallback.wordCount - 145))) {
           bestFallback = story;
         }
         addLog('WARN', `QC rejected Gemini draft "${story.title}" (${qc.wordCount}w): ${qc.issues.join('; ')} — regenerating...`);
