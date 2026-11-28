@@ -1,10 +1,9 @@
 {
-  "styleCursor": 7,
+  "styleCursor": 8,
   "styleBag": [
-    "stick-story",
     "night-file"
   ],
-  "lastStyleId": "paper-atlas",
+  "lastStyleId": "stick-story",
   "usedStoryKeys": [
     "io-crack-knuckles",
     "tt-eiffel-twice",
@@ -15,7 +14,8 @@
     "ai-b0c768ed1185",
     "ai-57e0583a27da",
     "ai-b524c6994991",
-    "ai-603ab1e9dfc5"
+    "ai-603ab1e9dfc5",
+    "ai-c98cf304a937"
   ],
   "usedTitles": [
     "The Con Man Who Sold the Eiffel Tower Twice",
@@ -26,6 +26,7 @@
     "Why Your Bones Are Screaming Right Now",
     "How One Man Tricked Coca-Cola For Years",
     "What Happens If You Swear Too Much?",
-    "How Salt Destroyed a Mighty Empire"
+    "How Salt Destroyed a Mighty Empire",
+    "What To Do During a Gas Leak"
   ]
 }
