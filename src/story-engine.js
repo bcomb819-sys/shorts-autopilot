@@ -225,13 +225,13 @@ STRICT UNIQUENESS RULE: Do NOT repeat, rephrase, or overlap ANY of these already
 ${recentUsed || '(none yet)'}
 
 HOW TO MAKE THIS SCRIPT IMPOSSIBLE TO SWIPE AWAY (FOLLOW EVERY RULE):
-1. BRUTAL 0-2s HOOK (line 0): Max 9 words! Drop the viewer STRAIGHT into the craziest action, shocking number, or mind-bending twist.
-   - GREAT examples: "A college kid sued Pepsi for a real fighter jet." / "Never jump inside a falling elevator." / "In nineteen seventy one, he jumped out mid-flight with two hundred thousand dollars."
+1. BRUTAL 0-2s HOOK (line 0): Max 9 words! Drop the viewer STRAIGHT into an everyday hidden object, a shocking paradox, or a high-stakes countdown.
+   - GREAT examples: "That tiny pinhole in your plane window saves your life." / "He raised a price from forty to eighty and sold out." / "On Monday, he had seventy two hours left." / "One sign tricked an entire town."
    - BANNED boring openers: NEVER start with "Did you know", "Have you ever wondered", "Today we", "In this video", "Imagine", or generic definitions!
-2. ZERO TEXTBOOK FLUFF — CINEMATIC STORYTELLING: Write like a breathless friend telling the wildest story at a party. Use vivid verbs, real names, real years, exact numbers, and escalating tension every single line.
-3. FAST MICRO-BEATS (7-9 short lines, 75-95 words total): Every line is 7-11 punchy spoken words so the visual scene cuts every 2.5 to 3.5 seconds!
-4. MID-VIDEO PLOT TWIST / ESCALATION (line 3 or 4): Hit a sharp turn ("But here is where it gets insane...", "Then they found something terrifying...", "Except nobody realized one tiny flaw...") right at the midpoint!
-5. MIC-DROP PAYOFF ENDING (last line): End on a jaw-dropping twist, irony, or punchline that makes people replay or comment immediately. ZERO "like and subscribe" or "stay safe" clichés.
+2. PUNCHY, SHORT CINEMATIC RHYTHM (Dex Explains / Hypothetically / Plizmo / Zack D. Films cadence): Write crisp, punchy, dramatic sentences with tension and irony — like telling your friend the wildest twist over coffee. Include exact numbers, countdown beats ("Monday... By Wednesday..."), or hidden-psychology reveals. Zero textbook fluff!
+3. FAST MICRO-BEATS (7-10 short lines, 80-105 words total): Every line is 7-12 punchy spoken words so the visual scene cuts every 2.5 to 3.5 seconds!
+4. MID-VIDEO PLOT TWIST / ESCALATION (line 3 or 4): Hit a sharp turn ("The boss laughed. Until Friday...", "Everyone thought it was a flaw—until...", "Then nobody noticed the one tiny catch...") right at the midpoint!
+5. MIC-DROP PAYOFF ENDING (last line): End on a clever irony, mind-blowing reveal, or reverse-psychology punchline that makes viewers replay or comment immediately. ZERO "like and subscribe" or "stay safe" clichés.
 6. Write numbers as spoken English words ONLY inside "lines[].text" (for crisp TTS voiceover). Inside "title" and "hookText", ALWAYS use short punchy digits like "$125M", "38 MIN", "1971" (never spell out long numbers in title or hookText, and keep hookText strictly 2-3 short words under 18 chars!).
 7. Change "scene" on every line so the animation cuts dynamically every 2.5 seconds.
 8. Return ONLY raw valid JSON (no markdown fences):

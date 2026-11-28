@@ -16,6 +16,11 @@ export const VIRAL_TOPICS = {
     'In 2005, a broke college student sold one million pixels on a blank website for $1 each and became a millionaire in four months.',
     'In 1979, McDonald\'s accidentally printed a Monopoly game glitch that a security insider secretly rigged for 12 years to steal $24 million in prizes.',
     'In 1965, a teenage boy mailed himself in a wooden crate from Australia to England because he couldn\'t afford a plane ticket—and survived the cargo hold.',
+    'Why luxury brands quietly burn or destroy millions of dollars of unsold designer bags instead of putting them on sale—and the sneaky psychology behind artificial scarcity.',
+    'How casinos secretly engineer zero clocks, curvy maze carpets, and oxygen-fresh hallways so your brain loses track of time and keeps walking deeper inside.',
+    'How supermarkets place milk and bread at the very back wall, slow down background music, and put pricey items at eye level to double what ends up in your cart.',
+    'Why movie theaters charge $10 for a bucket of popcorn that costs 30 cents to make—and how the sneaky "decoy medium size" forces your brain to buy the large.',
+    'How a clever shopkeeper stopped shoplifters without buying a single security camera by hanging one giant photo of staring eyes on the wall (the watching-eye effect).',
   ],
   'deep-dive': [
     'What actually happens inside your body second by second if you get stung by a Bullet Ant, the most painful insect sting on Earth.',
@@ -44,6 +49,11 @@ export const VIRAL_TOPICS = {
     'Why you can survive weeks without food, days without water, but only minutes without oxygen (and why your body panics from CO2, not low oxygen).',
     'Why mosquitoes relentlessly bite some people and completely ignore the person standing right next to them.',
     'Why time genuinely feels like it slows down in slow-motion during a car crash or terrifying fall.',
+    'The tiny pinhole at the bottom of every airplane window—it is NOT a crack, and without that microscopic hole the entire window could shatter at 35,000 feet.',
+    'Why every street manhole cover in the world is round instead of square—the simple geometry trick that prevents a 250-pound iron lid from falling on workers below.',
+    'Why there is a tiny useless-looking pocket inside your jeans pocket—and the surprising 1873 invention it was originally built to protect.',
+    'Why airplane seats are almost always blue and dimmed during night landings—the hidden safety and psychology trick airlines never tell passengers.',
+    'Why the tiny plastic loop inside every soda bottle cap exists—and how removing it would make your fizzy drink go completely flat in hours.',
   ],
   'stick-story': [
     'What to do if an elevator cable snaps and you are plunging downward—why jumping at the last second is a deadly myth, and the real pose that saves you.',
@@ -72,6 +82,9 @@ export const VIRAL_TOPICS = {
     'In 1959, nine experienced hikers slashed their own tent open from the inside and fled barefoot into minus-30-degree Ural Mountain snow in the Dyatlov Pass mystery.',
     'In 1945, five Navy bombers known as Flight 19 vanished over the Bermuda Triangle after reporting compasses spinning wildly—and the rescue plane sent for them vanished too.',
     'In 1979, a deep-sea diver was left stranded alone on the ocean floor 300 feet down with only 5 minutes of backup oxygen left—and somehow survived.',
+    'In 1972, a rugby team survived 72 freezing days in the Andes Mountains after a plane crash—and two players hiked ten days across glaciers with zero gear to rescue everyone.',
+    'In 2013, a ship cook was trapped inside an air pocket in an upside-down sunken tugboat 100 feet underwater in pitch darkness for three days before divers heard his knock.',
+    'In 1994, an airline pilot locked out of his own cockpit at 30,000 feet had to crawl through an emergency floor hatch while the autopilot raced toward mountains.',
   ],
   'paper-atlas': [
     'In 1896, the Anglo-Zanzibar War lasted just 38 minutes—the shortest war in recorded history—ending before the British fleet even finished breakfast.',
@@ -92,5 +105,8 @@ export const VIRAL_TOPICS = {
     'In 1939 during the Winter War, Finnish farmer Simo Hayha used an iron-sight rifle in minus-40 snow and packed snow in his mouth to hide his breath—earning the nickname White Death.',
     'In 480 BC at Thermopylae, 300 Spartans and Greek allies used a narrow coastal mountain pass to turn a massive Persian army\'s numbers against them for three grueling days.',
     'In 1597 at Myeongnyang, Korean Admiral Yi Sun-sin faced 133 enemy warships with only 13 ships—using a treacherous swirling ocean whirlpool to win without losing a single ship.',
+    'In 1944, the US Army recruited fashion designers and sound engineers to build a fake Ghost Army of inflatable rubber tanks and giant speakers that fooled enemy generals.',
+    'In 1941, Hollywood set designers disguised the entire 26-acre Boeing bomber factory in Seattle as a fake suburban neighborhood with fake houses, cars, and trees on the roof.',
+    'In 1918, France secretly started building a complete fake replica of Paris—with fake lighted train stations and fake Eiffel Tower—miles outside the city to trick night bombers.',
   ],
 };
