@@ -1,7 +1,13 @@
 {
-  "styleCursor": 9,
-  "styleBag": [],
-  "lastStyleId": "night-file",
+  "styleCursor": 10,
+  "styleBag": [
+    "night-file",
+    "deep-dive",
+    "paper-atlas",
+    "stick-story",
+    "tall-tale"
+  ],
+  "lastStyleId": "inside-out",
   "usedStoryKeys": [
     "io-crack-knuckles",
     "tt-eiffel-twice",
@@ -14,7 +20,8 @@
     "ai-b524c6994991",
     "ai-603ab1e9dfc5",
     "ai-c98cf304a937",
-    "ai-630c1ec5baaa"
+    "ai-630c1ec5baaa",
+    "vp-722e50aa27"
   ],
   "usedTitles": [
     "The Con Man Who Sold the Eiffel Tower Twice",
@@ -27,6 +34,7 @@
     "What Happens If You Swear Too Much?",
     "How Salt Destroyed a Mighty Empire",
     "What To Do During a Gas Leak",
-    "The Ghost Ship of the Open Atlantic"
+    "The Ghost Ship of the Open Atlantic",
+    "Why You Can't Tickle Yourself"
   ]
 }
