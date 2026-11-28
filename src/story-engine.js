@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { ALL_STYLES } from './config.js';
 import { addLog, getState, isStoryDuplicate } from './store.js';
 import { STORY_BANK } from './story-bank.js';
+import { VIRAL_TOPICS } from './viral-topics.js';
 
 export async function checkOllamaStatus(ollamaUrl) {
   const base = (ollamaUrl || 'http://127.0.0.1:11434').replace(/\/+$/, '');
@@ -106,12 +107,19 @@ function sanitizeBlueprint(raw, styleId) {
     throw new Error('Story blueprint missing valid lines array.');
   }
 
+  let prevScene = '';
   const lines = raw.lines
     .slice(0, 12)
     .map((ln, idx) => {
       const text = String(ln.text || '').replace(/\s+/g, ' ').trim();
       if (!text) return null;
-      const scene = schema.scenes.includes(ln.scene) ? ln.scene : schema.scenes[idx % schema.scenes.length];
+      let scene = schema.scenes.includes(ln.scene) ? ln.scene : schema.scenes[idx % schema.scenes.length];
+      // Prevent static visuals: never repeat the exact same scene twice in a row!
+      if (scene === prevScene && schema.scenes.length > 1) {
+        const alts = schema.scenes.filter((s) => s !== prevScene);
+        scene = alts[(idx + text.length) % alts.length];
+      }
+      prevScene = scene;
       const mood = schema.moods.includes(ln.mood) ? ln.mood : schema.moods[0];
       const out = {
         text,
@@ -175,39 +183,70 @@ function sanitizeBlueprint(raw, styleId) {
   };
 }
 
-function buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt = 1) {
+function premiseKey(premise) {
+  return 'vp-' + crypto.createHash('sha1').update(String(premise)).digest('hex').slice(0, 10);
+}
+
+function pickFreshViralTopic(styleId, usedTitles) {
+  const pool = VIRAL_TOPICS[styleId] || [];
+  const unused = pool.filter((premise) => {
+    const pk = premiseKey(premise);
+    if (isStoryDuplicate(pk, premise)) return false;
+    return !usedTitles.some((t) => {
+      const a = premise.toLowerCase();
+      const words = String(t || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 4);
+      if (words.length < 2) return false;
+      const hits = words.filter((w) => a.includes(w)).length;
+      return hits / words.length >= 0.55;
+    });
+  });
+  if (!unused.length) return null;
+  const text = unused[Math.floor(Math.random() * unused.length)];
+  return { key: premiseKey(text), text };
+}
+
+function buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt = 1, curatedPremise = null) {
   const schema = STYLE_SCHEMAS[styleId] || STYLE_SCHEMAS['tall-tale'];
   const recentUsed = usedTitles.slice(-80).join(' | ');
   const angles = schema.angles || ['unusual world history', 'human body surprise', 'clever real-world loophole'];
   const randomAngle = angles[Math.floor(Math.random() * angles.length)];
 
-  return `You are a top 0.1% viral YouTube Shorts scriptwriter (Zack D. Films / Kurzgesagt pacing) engineered for 95%+ retention and seamless looping.
-Create ONE 100% BRAND-NEW, NEVER-BEFORE-USED 25-to-33-second Short in style "${styleId}".
-Style guidance: ${schema.guidance}
-Specific angle for this Short (seed #${attempt}-${Date.now() % 997}): ${randomAngle}.
-Channel theme context: ${nicheTopics || randomAngle}.
+  const premiseBlock = curatedPremise
+    ? `REQUIRED VIRAL STORY PREMISE (turn THIS exact high-stakes true story/fact into an insanely gripping Short):\n"${curatedPremise}"`
+    : `Pick ONE jaw-dropping, ultra-specific, REAL high-stakes topic matching: ${randomAngle} (seed #${attempt}-${Date.now() % 997}).\nBANNED BORING TOPICS: NEVER write dull school-textbook PSAs, vague generic advice ("what happens if you swear", "gas leak safety", "drink water"), or generic unnamed stories. MUST include real names, crazy numbers, or extreme physical/emotional stakes!`;
+
+  return `You are the lead scriptwriter for a 50-million-view YouTube Shorts channel (Zack D. Films / Johnny Harris / Fern / Brew style).
+Write ONE insanely gripping, binge-worthy 26-to-33-second Short in style "${styleId}".
+Style look & tone: ${schema.guidance}
+
+${premiseBlock}
+
 STRICT UNIQUENESS RULE: Do NOT repeat, rephrase, or overlap ANY of these already-used stories:
 ${recentUsed || '(none yet)'}
 
-VIRAL RETENTION RULES (MUST FOLLOW EVERY SINGLE ONE):
-1. INSTANT 0-2s HOOK (line 0): Maximum 9 spoken words! Start directly inside tension, a bizarre fact, or a "you" question that opens an irresistible curiosity loop. NEVER start with "Did you know", "Have you ever wondered", "Today we", or "In this video".
-2. FAST MICRO-BEATS (7-9 short lines, 75-95 words total): Every line is 1 punchy visual beat (7-11 words) so the scene cuts every 2.5 to 3.5 seconds — zero rambling, zero filler!
-3. MID-VIDEO RE-HOOK / TWIST (line 3 or 4): Drop a sharp pattern-interrupt turn ("But here is the crazy part...", "Until one tiny mistake ruined everything...", "And what happens next is wild...") right at the midpoint to stop viewers from swiping away.
-4. PAYOFF + SEAMLESS LOOP ENDING (last line): Deliver the shocking payoff or twist cleanly on the last line so the end feels tight and loops smoothly back into line 0. NEVER add "like and subscribe", "follow for more", or "thanks for watching".
-5. Write all numbers in "text" as spoken English words (e.g., "nineteen ninety five", "five thousand") for clean TTS.
-6. Return ONLY raw valid JSON (no markdown fences):
+HOW TO MAKE THIS SCRIPT IMPOSSIBLE TO SWIPE AWAY (FOLLOW EVERY RULE):
+1. BRUTAL 0-2s HOOK (line 0): Max 9 words! Drop the viewer STRAIGHT into the craziest action, shocking number, or mind-bending twist.
+   - GREAT examples: "A college kid sued Pepsi for a real fighter jet." / "Never jump inside a falling elevator." / "In nineteen seventy one, he jumped out mid-flight with two hundred thousand dollars."
+   - BANNED boring openers: NEVER start with "Did you know", "Have you ever wondered", "Today we", "In this video", "Imagine", or generic definitions!
+2. ZERO TEXTBOOK FLUFF — CINEMATIC STORYTELLING: Write like a breathless friend telling the wildest story at a party. Use vivid verbs, real names, real years, exact numbers, and escalating tension every single line.
+3. FAST MICRO-BEATS (7-9 short lines, 75-95 words total): Every line is 7-11 punchy spoken words so the visual scene cuts every 2.5 to 3.5 seconds!
+4. MID-VIDEO PLOT TWIST / ESCALATION (line 3 or 4): Hit a sharp turn ("But here is where it gets insane...", "Then they found something terrifying...", "Except nobody realized one tiny flaw...") right at the midpoint!
+5. MIC-DROP PAYOFF ENDING (last line): End on a jaw-dropping twist, irony, or punchline that makes people replay or comment immediately. ZERO "like and subscribe" or "stay safe" clichés.
+6. Write numbers as spoken English words ONLY inside "lines[].text" (for crisp TTS voiceover). Inside "title" and "hookText", ALWAYS use short punchy digits like "$125M", "38 MIN", "1971" (never spell out long numbers in title or hookText, and keep hookText strictly 2-3 short words under 18 chars!).
+7. Change "scene" on every line so the animation cuts dynamically every 2.5 seconds.
+8. Return ONLY raw valid JSON (no markdown fences):
 {
-  "title": "Curiosity-gap viral Shorts title under 55 chars (no clickbait spam)",
-  "hookText": "2-3 WORD BOLD HOOK",
-  "description": "2-sentence curiosity description ending with #shorts",
+  "title": "Scroll-stopping viral Shorts title under 52 chars (punchy, specific, NOT textbook)",
+  "hookText": "2-3 WORD SHOCKING HOOK",
+  "description": "2-sentence gripping description with a question to spark comments, ending with #shorts",
   "tags": ["shorts", "tag2", "tag3", "tag4", "tag5", "tag6"],
-  "sources": ["Reliable source name"],
+  "sources": ["Real source name"],
   "lines": [
     {
-      "text": "Spoken narration beat (7-11 words, numbers spelled out)",
+      "text": "Punchy spoken beat (7-11 words, numbers spelled out)",
       "scene": "one of: ${schema.scenes.join(' | ')}",
       "mood": "one of: ${schema.moods.join(' | ')}",
-      "badge": "OPTIONAL 1-2 WORD OVERLAY",
+      "badge": "OPTIONAL 1-2 WORD BOLD OVERLAY",
       "badgeSub": "OPTIONAL SUBTEXT",
       "badgeColor": "gold | green | red | cream",
       "pill": "OPTIONAL 2-WORD PILL",
@@ -217,7 +256,7 @@ VIRAL RETENTION RULES (MUST FOLLOW EVERY SINGLE ONE):
 }`;
 }
 
-async function generateWithOllama(styleId, usedTitles, nicheTopics, ollamaUrl, ollamaModel, attempt) {
+async function generateWithOllama(styleId, usedTitles, nicheTopics, ollamaUrl, ollamaModel, attempt, curatedPremise = null) {
   const base = (ollamaUrl || 'http://127.0.0.1:11434').replace(/\/+$/, '');
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 90_000);
@@ -227,7 +266,7 @@ async function generateWithOllama(styleId, usedTitles, nicheTopics, ollamaUrl, o
     signal: ctrl.signal,
     body: JSON.stringify({
       model: ollamaModel || 'llama3.2',
-      prompt: buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt),
+      prompt: buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt, curatedPremise),
       format: 'json',
       stream: false,
       options: { temperature: 0.9 },
@@ -239,7 +278,7 @@ async function generateWithOllama(styleId, usedTitles, nicheTopics, ollamaUrl, o
   return sanitizeBlueprint(JSON.parse(data.response), styleId);
 }
 
-async function generateWithGemini(styleId, usedTitles, nicheTopics, apiKey, model, attempt) {
+async function generateWithGemini(styleId, usedTitles, nicheTopics, apiKey, model, attempt, curatedPremise = null) {
   const candidates = [...new Set([model || 'gemini-flash-lite-latest', 'gemini-flash-lite-latest', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite'])];
   let lastErr = null;
   for (const m of candidates) {
@@ -248,9 +287,9 @@ async function generateWithGemini(styleId, usedTitles, nicheTopics, apiKey, mode
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt) }] }],
+        contents: [{ parts: [{ text: buildStoryPrompt(styleId, usedTitles, nicheTopics, attempt, curatedPremise) }] }],
         generationConfig: {
-          temperature: 0.95,
+          temperature: 0.9,
           responseMimeType: 'application/json',
         },
       }),
@@ -280,8 +319,10 @@ export async function generateUniqueStory(styleId, { forceSource = null } = {}) 
       const model = status.models.includes(st.settings.ollamaModel) ? st.settings.ollamaModel : status.models[0];
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
+          const picked = pickFreshViralTopic(styleId, usedTitles);
           addLog('INFO', `Generating unique "${styleId}" story via local Ollama (${model}, attempt ${attempt})...`);
-          const story = await generateWithOllama(styleId, usedTitles, st.settings.nicheTopics, st.settings.ollamaUrl, model, attempt);
+          const story = await generateWithOllama(styleId, usedTitles, st.settings.nicheTopics, st.settings.ollamaUrl, model, attempt, picked?.text || null);
+          if (picked?.key) story.key = picked.key;
           if (!isStoryDuplicate(story.key, story.title)) {
             return { story, generatedBy: `ollama:${model}` };
           }
@@ -301,8 +342,10 @@ export async function generateUniqueStory(styleId, { forceSource = null } = {}) 
   if ((sourceMode === 'auto' || sourceMode === 'hybrid' || sourceMode === 'gemini') && gemKey) {
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        addLog('INFO', `Generating unique "${styleId}" story via Gemini API (${st.settings.geminiModel}, attempt ${attempt})...`);
-        const story = await generateWithGemini(styleId, usedTitles, st.settings.nicheTopics, gemKey, st.settings.geminiModel, attempt);
+        const picked = pickFreshViralTopic(styleId, usedTitles);
+        addLog('INFO', `Generating unique "${styleId}" story via Gemini API (${st.settings.geminiModel}, attempt ${attempt}${picked ? ', curated viral premise' : ''})...`);
+        const story = await generateWithGemini(styleId, usedTitles, st.settings.nicheTopics, gemKey, st.settings.geminiModel, attempt, picked?.text || null);
+        if (picked?.key) story.key = picked.key;
         if (!isStoryDuplicate(story.key, story.title)) {
           return { story, generatedBy: `gemini:${st.settings.geminiModel}` };
         }
